@@ -34,8 +34,6 @@ This initial release is intentionally focused and stable.
 
 These capabilities are planned for future versions.
 
-------------------------------------------------------------------------
-
 ## Supported Resources
 
 The node exposes the following resources:
@@ -43,14 +41,10 @@ The node exposes the following resources:
 -   Events
 -   Event Types
 -   Patrols (derived from Event Types parameters)
--   Users\
-    Includes **Get Many (Simple)** for lightweight user listings
+-   Users [Includes **Get Many (Simple)** for lightweight user listings]
 -   Other read-only endpoints as defined in v1
 
-Each resource is available through standard n8n **Resource / Operation**
-selectors.
-
-------------------------------------------------------------------------
+Each resource is available through standard n8n **Resource / Operation** selectors.
 
 ## Installation
 
@@ -66,8 +60,6 @@ Or inside a self-hosted n8n environment:
 2.  Run: npm install n8n-nodes-trooptrack
 3.  Restart n8n
 
-------------------------------------------------------------------------
-
 ## Configuration
 
 You will need your TroopTrack API credentials.
@@ -78,7 +70,6 @@ You will need your TroopTrack API credentials.
 
 Once configured, the **TroopTrack** node will appear in the node list.
 
-------------------------------------------------------------------------
 
 ## Example Use Cases
 
@@ -87,25 +78,27 @@ Once configured, the **TroopTrack** node will appear in the node list.
 -   Power Google Sheets, Airtable, or databases with TroopTrack data
 -   Drive notifications and workflows based on TroopTrack activity
 
-------------------------------------------------------------------------
-
 ## Roadmap
 
 This project is intentionally iterative.
 
 ### Planned Enhancements
 
-**v1.x** - Expanded GET coverage for additional endpoints - Field
-filtering and optional parameters where supported
+**v1.x** 
+- Expanded GET coverage for additional endpoints 
+- Field filtering and optional parameters where supported
 
-**v2.0** - Write support\
-POST, PUT, and PATCH operations\
-Create and update entities directly from n8n
+**v2.0** 
+- Write support
+- POST, PUT, and PATCH operations
+- Create and update entities directly from n8n
 
-**Advanced Automation Layer** - Puppeteer-based automation for
-TroopTrack features not exposed via API - Headless UI actions for
-workflows such as: - Admin-only operations - Batch updates - Workflow
-steps not supported natively by TroopTrack
+**Advanced Automation Layer** 
+- Puppeteer-based automation for TroopTrack features not exposed via API 
+- Headless UI actions for workflows such as: 
+    - Admin-only operations 
+    - Batch updates 
+    - Workflow steps not supported natively by TroopTrack
 
 ------------------------------------------------------------------------
 
@@ -125,11 +118,16 @@ updates.
 
 Contributions are welcome.
 
-If you are adding: - New GET endpoints - Additional resource support -
-Output improvements - Bug fixes
+If you are adding: 
+- New GET endpoints 
+- Additional resource support 
+- Output improvements 
+- Bug fixes
 
-Please open a pull request with: - A clear description of the change -
-Testing notes - Any relevant API documentation
+Please open a pull request with: 
+- A clear description of the change 
+- Testing notes 
+- Any relevant API documentation
 
 ------------------------------------------------------------------------
 
