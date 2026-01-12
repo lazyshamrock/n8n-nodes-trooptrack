@@ -93,10 +93,17 @@ export class TroopTrack implements INodeType {
 
 				const awardTypes = Array.isArray(root?.award_types) ? root.award_types : [];
 
-				return awardTypes.map((at: any) => ({
-					name: at?.name ?? String(at?.id),
-					value: at?.id,
-				}));
+				return awardTypes
+					.map((at: any) => {
+						const id = at?.award_type_id ?? at?.id; // handle either shape
+						if (id === undefined || id === null) return null;
+
+						return {
+						name: at?.name ?? String(id),
+						value: Number(id), // ensures the parameter is a number
+						};
+					})
+					.filter(Boolean) as Array<{ name: string; value: number }>;
 			},
 		},
 	};
