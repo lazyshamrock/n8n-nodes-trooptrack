@@ -24,7 +24,7 @@ pnpm-debug.log*
 .idea/
 
 # Node Builds
-*.tgz
+builds/
 
 # misc
 .env

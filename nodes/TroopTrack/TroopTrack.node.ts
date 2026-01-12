@@ -18,7 +18,9 @@ import { mailingListsOperations, mailingListsFields } from './descriptions/Maili
 import { photoAlbumsOperations, photoAlbumsFields } from './descriptions/PhotoAlbums.description';
 import { userAchievementsOperations, userAchievementsFields } from './descriptions/UserAchievements.description';
 import { patrolsDescription } from './descriptions/Patrols.description';
-
+import { TroopTrackPuppeteerSession } from './puppeteer/PuppeteerSession';
+import { setNullFields, mergeFieldsByUserId } from './puppeteer/UserInput';
+import { scrapeTroopTrackUsernames } from './puppeteer/scrapers/usernames';
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -144,11 +146,50 @@ export class TroopTrack implements INodeType {
 
 			// USERS
 			if (resource === 'users') {
-				if (operation === 'getMany') {
-					const resp = await troopTrackRequest(this, 'GET', '/v1/users');
-					// resp is expected to be { users: [...] }
-					responseData = Array.isArray(resp?.users) ? resp.users : [];
-				}
+				if (resource === 'users' && operation === 'getMany') {
+					const returnType = this.getNodeParameter('returnType', i, 'api') as string;
+
+					if (returnType === 'simple') {
+						// Old Get Many (Simple) behavior
+						const raw = await troopTrackRequest(this, 'GET', '/v1/events/types', {}, {});
+						const wrapper = Array.isArray(raw) ? raw[0] : raw;
+
+						const users = Array.isArray(wrapper?.users) ? wrapper.users : [];
+						responseData = users.map((u: any) => ({
+						user_id: u?.user_id,
+						name: u?.name,
+						scout: u?.scout,
+						}));
+					} else if (returnType === 'extended') {
+						// Stub for now. Return API payload (same as 'api') plus metadata about the user's selection.
+						const dataToInclude = this.getNodeParameter('dataToInclude', i, []) as string[];
+
+						const raw = await troopTrackRequest(this, 'GET', '/v1/users', {}, {});
+						const wrapper = Array.isArray(raw) ? raw[0] : raw;
+
+						const users = Array.isArray(wrapper?.users) ? wrapper.users : Array.isArray(wrapper) ? wrapper : [];
+
+						responseData = users.map((u: any) => ({
+						...u,
+						_extended: {
+							enabled: true,
+							dataToInclude,
+							note: 'Extended return type is not implemented yet. Returning API payload as a placeholder.',
+						},
+						}));
+					} else {
+						// returnType === 'api'
+						const raw = await troopTrackRequest(this, 'GET', '/v1/users', {}, {});
+						const wrapper = Array.isArray(raw) ? raw[0] : raw;
+
+						// Adjust this depending on your existing /v1/users response shaping
+						responseData = Array.isArray(wrapper?.users)
+						? wrapper.users
+						: Array.isArray(wrapper)
+							? wrapper
+							: [];
+					}
+					}
 
 				if (operation === 'getById') {
 					const userId = this.getNodeParameter('userId', i) as number;
@@ -157,27 +198,49 @@ export class TroopTrack implements INodeType {
 					responseData = resp?.user ?? resp;
 				}
 
+				if (operation === 'getUsernames') {
+					const userIdField = this.getNodeParameter('userIdField', i, 'user_id') as string;
+					const inputItems = this.getInputData();
+
+					const fieldsToAdd = ['troopTrackUsername'];
+
+					// Default output with nulls
+					let output = setNullFields(inputItems as any, fieldsToAdd);
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as any;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000);
+
+						output = await session.withSession(async (page) => {
+							const usernameMap = await scrapeTroopTrackUsernames(page, baseUrl, 120000);
+							return mergeFieldsByUserId(output as any, userIdField, usernameMap as any, fieldsToAdd) as any;
+						});
+					} catch (err) {
+						// Requirement: on access error or any error, return null fields
+						output = setNullFields(inputItems as any, fieldsToAdd) as any;
+					}
+
+					return output as any;
+				}
+
 				if (operation === 'update') {
 					const userId = this.getNodeParameter('userId', i) as number;
 					const updateBody = this.getNodeParameter('updateBody', i) as object;
 					const resp = await troopTrackRequest(this, 'POST', `/v1/users/${userId}`, {}, updateBody);
 					responseData = resp?.user ?? resp;
 				}
-
-				if (operation === 'getManySimple') {
-					// Users (Simple) comes from the same payload as Event Types: GET /v1/events/types
-					const raw = await troopTrackRequest(this, 'GET', '/v1/events/types', {}, {});
-					const wrapper = Array.isArray(raw) ? raw[0] : raw;
-
-					const users = Array.isArray(wrapper?.users) ? wrapper.users : [];
-
-					responseData = users.map((u: any) => ({
-						user_id: u?.user_id,
-						name: u?.name,
-						scout: u?.scout,
-					}));
-					}
-
 			}
 
 

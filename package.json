@@ -40,7 +40,11 @@
       "dist/nodes/TroopTrack/TroopTrack.node.js"
     ]
   },
-  "dependencies": {},
+  "dependencies": {
+    "puppeteer": "^24.35.0",
+    "puppeteer-extra": "^3.3.6",
+    "puppeteer-extra-plugin-stealth": "^2.11.2"
+  },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "eslint": "^9.0.0",
