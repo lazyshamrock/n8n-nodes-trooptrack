@@ -7,6 +7,9 @@ node_modules/
 # build output
 dist/
 
+# Support Scripts
+scripts/
+
 # logs
 npm-debug.log*
 yarn-debug.log*
@@ -19,6 +22,9 @@ pnpm-debug.log*
 # editors
 .vscode/
 .idea/
+
+# Node Builds
+*.tgz
 
 # misc
 .env

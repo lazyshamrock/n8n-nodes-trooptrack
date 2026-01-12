@@ -86,28 +86,40 @@ export class TroopTrack implements INodeType {
 			async getAwardTypes(this: import('n8n-workflow').ILoadOptionsFunctions) {
 				const { troopTrackRequest } = await import('./GenericFunctions');
 
-				const resp = await troopTrackRequest(this, 'GET', '/v1/user_achievements/parameters');
+				// Use the dedicated endpoint. It is the most consistent source for award types.
+				const resp = await troopTrackRequest(this, 'GET', '/v1/award_types');
 
 				let root: any = resp;
 				if (Array.isArray(root) && root.length === 1) root = root[0];
 
-				const awardTypes = Array.isArray(root?.award_types) ? root.award_types : [];
+				const mapOrArray = root?.award_types ?? root;
 
-				return awardTypes
-					.map((at: any) => {
-						const id = at?.award_type_id ?? at?.id; // handle either shape
-						if (id === undefined || id === null) return null;
+				let list: Array<{ award_type_id: number; name?: string }> = [];
 
-						return {
-						name: at?.name ?? String(id),
-						value: Number(id), // ensures the parameter is a number
-						};
-					})
-					.filter(Boolean) as Array<{ name: string; value: number }>;
+				// Shape A: { award_types: { "2": { name: "..." }, ... } }
+				if (mapOrArray && typeof mapOrArray === 'object' && !Array.isArray(mapOrArray)) {
+					list = Object.entries(mapOrArray).map(([id, obj]: [string, any]) => ({
+						award_type_id: Number(id),
+						name: obj?.name,
+					}));
+				}
+				// Shape B: [ { award_type_id: 2, name: "..." }, ... ]
+				else if (Array.isArray(mapOrArray)) {
+					list = mapOrArray.map((x: any) => ({
+						award_type_id: Number(x?.award_type_id ?? x?.id),
+						name: x?.name,
+					}));
+				}
+
+				return list
+					.filter((x) => Number.isFinite(x.award_type_id))
+					.map((x) => ({
+						name: x.name ?? String(x.award_type_id),
+						value: x.award_type_id, // stays a number, which is what you want
+					}));
 			},
 		},
 	};
-
 
 	async execute(this: IExecuteFunctions): Promise<INodeExecutionData[][]> {
 		const items = this.getInputData();

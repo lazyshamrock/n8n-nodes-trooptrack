@@ -34,21 +34,14 @@ export const achievementsFields: INodeProperties[] = [
 		displayOptions: { show: { resource: ['achievements'], operation: ['getById'] } },
 		default: 0,
 	},
-	{
-		displayName: 'Award Type Id',
-		name: 'awardTypeId',
-		type: 'number',
-		required: true,
-		displayOptions: { show: { resource: ['achievements'], operation: ['getById'] } },
-		default: 0,
-		description: 'Required by TroopTrack for /v1/achievements/{id}',
-	},
+
+	// Award Type for Get Many
 	{
 		displayName: 'Award Type',
 		name: 'awardTypeId',
 		type: 'options',
 		required: true,
-		default: 999999999,
+		default: 0,
 		description: 'Select the award type to return its achievements list',
 		typeOptions: {
 			loadOptionsMethod: 'getAwardTypes',
@@ -61,4 +54,22 @@ export const achievementsFields: INodeProperties[] = [
 		},
 	},
 
+	// Award Type for Get By Id
+	{
+		displayName: 'Award Type',
+		name: 'awardTypeId',
+		type: 'options',
+		required: true,
+		default: 0,
+		description: 'Required by TroopTrack for GET /v1/achievements/{id}',
+		typeOptions: {
+			loadOptionsMethod: 'getAwardTypes',
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievements'],
+				operation: ['getById'],
+			},
+		},
+	},
 ];
