@@ -1,19 +1,24 @@
 {
   "name": "n8n-nodes-trooptrack",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "n8n community node for the TroopTrack API",
   "license": "MIT",
   "author": "",
   "keywords": [
+    "n8n-community-node-package",
+    "n8n-nodes",
     "n8n-community-node",
     "n8n",
     "trooptrack",
     "automation"
   ],
-  "homepage": "",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "git+https://github.com/lazyshamrock/n8n-nodes-trooptrack.git"
+  },
+  "homepage": "https://github.com/lazyshamrock/n8n-nodes-trooptrack#readme",
+  "bugs": {
+    "url": "https://github.com/lazyshamrock/n8n-nodes-trooptrack/issues"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
