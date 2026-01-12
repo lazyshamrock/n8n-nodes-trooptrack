@@ -24,6 +24,7 @@ import { scrapeTroopTrackUsernames } from './puppeteer/scrapers/usernames';
 import { scrapeTroopTrackHealthFormDates } from './puppeteer/scrapers/healthForms';
 import { scrapeTroopTrackTxtOptOut } from './puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from './puppeteer/scrapers/counseledMeritBadges';
+import { scrapeTroopTrackProfileFields } from './puppeteer/scrapers/profileFields';
 
 
 export class TroopTrack implements INodeType {
@@ -136,19 +137,20 @@ export class TroopTrack implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			// Run-once operations: these process the full input set in one pass
-			if (
-				resource === 'users' &&
+			if ( resource === 'users' &&
 				(
 					operation === 'getUsernames' ||
 					operation === 'getHealthFormDates' ||
 					operation === 'getTxtOptOut' ||
-					operation === 'getCounseledMeritBadges'
+					operation === 'getCounseledMeritBadges' ||
+					operation === 'getBsaId' ||
+					operation === 'getDateJoined' ||
+					operation === 'getAllergies'
 				) &&
 				i !== 0
 			) {
 				continue;
 			}
-
 
 			let responseData: any;
 
@@ -165,6 +167,114 @@ export class TroopTrack implements INodeType {
 
 			// USERS
 			if (resource === 'users') {
+
+				const runProfileFieldScrape = async (field: 'BSA_id' | 'date_joined' | 'allergies') => {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							finalUrl: null,
+							scrapedField: field,
+							userCount: items.length,
+							firstUserId: null,
+							firstProfileUrl: null,
+							urlBeforeScrape: null,
+							urlAfterScrape: null,
+							firstScrapeDebug: null,
+						},
+					};
+
+					const userIdField = this.getNodeParameter('userIdField', 0, 'user_id') as string;
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0) as string;
+					const delayMs = this.getNodeParameter('delayMs', 0, 300) as number;
+					const batchSize = this.getNodeParameter('batchSize', 0, 0) as number;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Default null field on every item (requirement: always exists)
+					let enriched: Array<Record<string, any>> = items.map((it) => ({
+						...(it.json as Record<string, any>),
+						[field]: null,
+					}));
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						// Build list of user IDs from the incoming items
+						const userIds: string[] = enriched
+							.map((u) => String(u?.[userIdField] ?? '').trim())
+							.filter((v) => v !== '');
+
+						debug.puppeteer.firstUserId = userIds[0] ?? null;
+						debug.puppeteer.firstProfileUrl = userIds[0] ? `${baseUrl}/manage/users/${userIds[0]}` : null;
+
+						const profileMap = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+							debug.puppeteer.urlBeforeScrape = page.url();
+
+							const map = await scrapeTroopTrackProfileFields(page, baseUrl, userIds, [field], {
+								delayMs,
+								retries: 1,
+								debug: debugMode,
+							});
+
+							debug.puppeteer.urlAfterScrape = page.url();
+							debug.puppeteer.finalUrl = page.url();
+
+							// Pull the first-user evidence off the map (added by profileFields.ts when debug=true)
+							const firstScrapeDebug = (map as any)?._debug_first ?? null;
+							debug.puppeteer.firstScrapeDebug = firstScrapeDebug;
+
+							if ((map as any)?._debug_first) {
+								delete (map as any)._debug_first;
+							}
+
+							return map;
+						});
+
+						enriched = enriched.map((u) => {
+							const id = String(u?.[userIdField] ?? '').trim();
+							const hit = id ? profileMap[id] : undefined;
+
+							return {
+								...u,
+								[field]:
+									hit && Object.prototype.hasOwnProperty.call(hit, field)
+										? (hit as any)[field]
+										: null,
+							};
+						});
+					} catch (e) {
+						// Requirement: do not fail. Keep null field. Only fail in debug mode.
+						if (debugMode) {
+							const msg = e instanceof Error ? e.message : String(e);
+							throw new Error(`profile scrape (${field}) failed: ${msg}. Debug: ${JSON.stringify(debug)}`);
+						}
+					}
+
+					if (debugMode) {
+						enriched = enriched.map((u) => ({ ...u, _debug: debug }));
+					}
+
+					return enriched;
+				};
+
 				if (operation === 'getMany') {
 					const returnType = this.getNodeParameter('returnType', i, 'api') as string;
 
@@ -578,6 +688,11 @@ export class TroopTrack implements INodeType {
 
 					responseData = enriched;
 				}
+
+				if (operation === 'getBsaId') { responseData = await runProfileFieldScrape('BSA_id'); }
+				if (operation === 'getDateJoined') { responseData = await runProfileFieldScrape('date_joined'); }
+				if (operation === 'getAllergies') { responseData = await runProfileFieldScrape('allergies'); }
+
 			}
 
 			// EVENTS
@@ -886,16 +1001,16 @@ export class TroopTrack implements INodeType {
 			}
 
 			// Output shaping
-			const shouldSplitIntoItems =
-				(resource === 'users' && (operation === 'getMany' || operation === 'getUsernames' || operation === 'getHealthFormDates' || operation === 'getTxtOptOut' || operation === 'getCounseledMeritBadges')) ||
-				(resource === 'events' && (operation === 'getMany' || operation === 'getTypes')) ||
-				(resource === 'achievements' && operation === 'getMany') ||
-				(resource === 'awardTypes' && operation === 'getMany') ||
-				(resource === 'mailingLists' && operation === 'getMany') ||
-				(resource === 'photoAlbums' && operation === 'getMany') ||
-				(resource === 'patrols' && operation === 'getMany') ||
-				(resource === 'userAchievements' && operation === 'getMany');
+			const op = String(operation || '').toLowerCase();
+			const neverSplitOps = new Set([
+				'getbyid',
+				'getbyid ', // defensive, if any stray whitespace
+				'update',
+			]);
+			const isByIdOperation = op.includes('getbyid') || op.includes('byid') || op.endsWith('byid') || op.endsWith('byid ');
 
+			// Only split if responseData is an array and it is not a by-id style op.
+			const shouldSplitIntoItems = Array.isArray(responseData) && !neverSplitOps.has(op) && !isByIdOperation;
 			if (shouldSplitIntoItems) {
 				for (const el of responseData as any[]) {
 					returnData.push({ json: el });

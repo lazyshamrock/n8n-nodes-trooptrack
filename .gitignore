@@ -11,6 +11,7 @@ dist/
 scripts/
 xWORKING/
 *dropin*
+AGENTS.md
 
 # logs
 npm-debug.log*

@@ -27,6 +27,9 @@ export const usersOperations: INodeProperties[] = [
 			{ name: 'Get Health Form Dates', value: 'getHealthFormDates', description: 'Get Health Form dates (PartA, PartB, PartC) for users keyed by user_id. [Scrapes data from the web UI (/manage/medical_book)]', action: 'Get health form dates' },
 			{ name: 'Get Text Message Opt Out', value: 'getTxtOptOut', description: 'Get text message opt-out status (txtOptOut) for users keyed by user_id. [Scrapes data from the web UI (/communicate/text_message_settings)]', action: 'Get text message opt out status'},
 			{ name: 'Get Counseled Merit Badges', value: 'getCounseledMeritBadges', description: 'Get counseled merit badges (counseled_MBs) for users keyed by user_id. [Scrapes data from the web UI (/manage/counseled_merit_badges)]', action: 'Get counseled merit badges' },
+			{ name: 'Get BSA ID', value: 'getBsaId', description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get BSA ID' },
+			{ name: 'Get Date Joined', value: 'getDateJoined', description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get date joined' },
+			{ name: 'Get Allergies', value: 'getAllergies', description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get allergies', },
 			{ name: 'Update User', value: 'update', description: 'POST /v1/users/{id}' },
 		],
 		default: 'getMany',
@@ -83,11 +86,9 @@ export const usersFields: INodeProperties[] = [
 		name: 'dataToInclude',
 		type: 'multiOptions',
 		noDataExpression: true,
-		required: true,
 		description:
 			'Extract additional data for all users based on other API Calls ("Detailed User Data", "Advancement Data") or webscraping via Puppeteer.',
 		default: [
-			'detailedUserData',
 			'advancementData',
 			'counseledMeritBadges',
 			'troopTrackUsername',
@@ -98,8 +99,7 @@ export const usersFields: INodeProperties[] = [
 			'allergies',
 		],
 		options: [
-			{ name: 'Detailed User Data', value: 'detailedUserData' },
-			{ name: 'Detailed Advancement Data', value: 'advancementData' },
+			{ name: 'Detailed Requirement Data', value: 'advancementData' },
 			{ name: 'Counseled Merit Badges', value: 'counseledMeritBadges' },
 			{ name: 'TroopTrack Username', value: 'troopTrackUsername' },
 			{ name: 'Health Form Dates', value: 'healthFormDates' },
@@ -116,7 +116,28 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
-	{ 	displayName: 'Award Type',
+	{	displayName: 'Add Requirement Details for Advancement Statuses',
+		name: 'advancementStatuses',
+		type: 'options',
+		noDataExpression: true,
+		required: true,
+		default: 'none',
+		description: 'Filter advancement data by completion status (multi-select).',
+		options: [
+			{ name: 'None', value: 'none' },
+			{ name: 'Incomplete Only', value: 'incomplete' },
+			{ name: 'All', value: 'all' },
+		],
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getMany'],
+				returnType: ['extended'],
+				dataToInclude: ['advancementData'],
+			},
+		},
+	},
+	{ 	displayName: 'Add Requirement Details for the following Award Types',
 		name: 'advancementAwardTypeIds',
 		type: 'multiOptions',
 		noDataExpression: true,
@@ -132,26 +153,7 @@ export const usersFields: INodeProperties[] = [
 				operation: ['getMany'],
 				returnType: ['extended'],
 				dataToInclude: ['advancementData'],
-			},
-		},
-	},
-	{	displayName: 'Advancement Status',
-		name: 'advancementStatuses',
-		type: 'multiOptions',
-		noDataExpression: true,
-		required: true,
-		default: ['incomplete', 'complete'],
-		description: 'Filter advancement data by completion status (multi-select).',
-		options: [
-			{ name: 'Incomplete', value: 'incomplete' },
-			{ name: 'Complete', value: 'complete' },
-		],
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['getMany'],
-				returnType: ['extended'],
-				dataToInclude: ['advancementData'],
+				advancementStatuses: ['incomplete', 'all'],
 			},
 		},
 	},
@@ -164,7 +166,7 @@ export const usersFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['users'],
-				operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
+				operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges', 'getBsaId', 'getDateJoined', 'getAllergies',],
 			},
 		},
 	},
@@ -186,7 +188,7 @@ export const usersFields: INodeProperties[] = [
 	}),
 	withShow(browserlessWsEndpointBase, {
 		resource: ['users'],
-		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
+		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges', 'getBsaId', 'getDateJoined', 'getAllergies',],
 	}),
 
 	withShow(debugModeBase, {
@@ -197,6 +199,40 @@ export const usersFields: INodeProperties[] = [
 
 	withShow(debugModeBase, {
 		resource: ['users'],
-		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
+		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges', 'getBsaId', 'getDateJoined', 'getAllergies',],
 	}),
+	{
+		displayName: 'Delay (ms)',
+		name: 'delayMs',
+		type: 'number',
+		default: 300,
+		description: 'Delay between profile page loads to reduce flakiness and avoid hammering TroopTrack.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getBsaId', 'getDateJoined', 'getAllergies'],
+			},
+		},
+	},
+	{
+		displayName: 'Batch Size',
+		name: 'batchSize',
+		type: 'number',
+		default: 0,
+		description:
+			'Optional. Process users in chunks. 0 means no batching. Useful for large units to reduce long-running sessions.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getBsaId', 'getDateJoined', 'getAllergies'],
+			},
+		},
+	},
+
 ];
