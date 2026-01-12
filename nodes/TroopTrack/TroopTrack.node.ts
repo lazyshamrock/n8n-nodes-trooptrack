@@ -131,6 +131,11 @@ export class TroopTrack implements INodeType {
 			const resource = this.getNodeParameter('resource', i) as string;
 			const operation = this.getNodeParameter('operation', i) as string;
 
+			// Run-once operations: these process the full input set in one pass
+			if (resource === 'users' && operation === 'getUsernames' && i !== 0) {
+				continue;
+			}
+
 			let responseData: any;
 
 			// TOKENS
@@ -146,7 +151,7 @@ export class TroopTrack implements INodeType {
 
 			// USERS
 			if (resource === 'users') {
-				if (resource === 'users' && operation === 'getMany') {
+				if (operation === 'getMany') {
 					const returnType = this.getNodeParameter('returnType', i, 'api') as string;
 
 					if (returnType === 'simple') {
@@ -168,14 +173,16 @@ export class TroopTrack implements INodeType {
 						const wrapper = Array.isArray(raw) ? raw[0] : raw;
 
 						const users = Array.isArray(wrapper?.users) ? wrapper.users : Array.isArray(wrapper) ? wrapper : [];
+						const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', i) as string;
 
 						responseData = users.map((u: any) => ({
-						...u,
-						_extended: {
-							enabled: true,
-							dataToInclude,
-							note: 'Extended return type is not implemented yet. Returning API payload as a placeholder.',
-						},
+							...u,
+							_extended: {
+								enabled: true,
+								dataToInclude,
+								browserlessConfigured: Boolean(browserlessWsEndpoint && browserlessWsEndpoint.trim()),
+								note: 'Extended return type is not implemented yet. Returning API payload as a placeholder.',
+							},
 						}));
 					} else {
 						// returnType === 'api'
@@ -199,16 +206,35 @@ export class TroopTrack implements INodeType {
 				}
 
 				if (operation === 'getUsernames') {
-					const userIdField = this.getNodeParameter('userIdField', i, 'user_id') as string;
-					const inputItems = this.getInputData();
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							loggedIn: false,
+							finalUrl: null,
+							usersPageUrl: null,
+							rowCount: null,
+						},
+					};
 
-					const fieldsToAdd = ['troopTrackUsername'];
+					const userIdField = this.getNodeParameter('userIdField', 0, 'user_id') as string;
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0) as string;
 
-					// Default output with nulls
-					let output = setNullFields(inputItems as any, fieldsToAdd);
+					const inputItems = items;
+					const fieldsToAdd = ['user_name'];
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Mirror the input items as plain JSON records, with a nullable field
+					let enriched: Array<Record<string, any>> = inputItems.map((it) => ({
+						...(it.json as Record<string, any>),
+						user_name: null as string | null,
+					}));
 
 					try {
-						const credentials = (await this.getCredentials('troopTrackApi')) as any;
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
 
 						const auth = {
 							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
@@ -221,28 +247,52 @@ export class TroopTrack implements INodeType {
 						}
 
 						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
-						const session = new TroopTrackPuppeteerSession(auth, 120000);
 
-						output = await session.withSession(async (page) => {
-							const usernameMap = await scrapeTroopTrackUsernames(page, baseUrl, 120000);
-							return mergeFieldsByUserId(output as any, userIdField, usernameMap as any, fieldsToAdd) as any;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const usernameMap = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+
+							debug.puppeteer.finalUrl = page.url();
+
+							// Go to users page and record where we actually landed
+							await page.goto(`${baseUrl}/manage/users`, { waitUntil: 'domcontentloaded', timeout: 120000 });
+							debug.puppeteer.usersPageUrl = page.url();
+
+							// Count rows using both common IDs
+							const rowCount0 = await page.$$eval('#DataTables_Table_0 > tbody tr', els => els.length).catch(() => 0);
+							const rowCount1 = await page.$$eval('#DataTables_Table_1 > tbody tr', els => els.length).catch(() => 0);
+							debug.puppeteer.rowCount = { table0: rowCount0, table1: rowCount1 };
+
+							// Now run your real scraper
+							return await scrapeTroopTrackUsernames(page, baseUrl, 120000);
 						});
-					} catch (err) {
-						// Requirement: on access error or any error, return null fields
-						output = setNullFields(inputItems as any, fieldsToAdd) as any;
+
+						enriched = enriched.map((u) => {
+							const id = String(u?.[userIdField] ?? '').trim();
+							const hit = id ? usernameMap[id] : undefined;
+
+							return {
+								...u,
+								user_name: hit?.user_name ?? null,
+							};
+						});
+					} catch (e) {
+						if (debugMode) {
+							const msg = e instanceof Error ? e.message : String(e);
+							throw new Error(`getUsernames failed: ${msg}. Debug: ${JSON.stringify(debug)}`);
+						}
+						// Requirement: null fields on error
 					}
 
-					return output as any;
-				}
 
-				if (operation === 'update') {
-					const userId = this.getNodeParameter('userId', i) as number;
-					const updateBody = this.getNodeParameter('updateBody', i) as object;
-					const resp = await troopTrackRequest(this, 'POST', `/v1/users/${userId}`, {}, updateBody);
-					responseData = resp?.user ?? resp;
+					// IMPORTANT: responseData must be an array of plain JSON objects
+					if (debugMode) {
+						enriched = enriched.map(u => ({ ...u, _debug: debug }));
+					}
+					responseData = enriched;
 				}
 			}
-
 
 			// EVENTS
 			if (resource === 'events') {
@@ -341,14 +391,6 @@ export class TroopTrack implements INodeType {
 						return out;
 					};
 
-					/**
-					 * Observed shapes:
-					 * A) [ { "1010": { ... } } ]
-					 * B) { "1010": { ... } }
-					 * C) { achievement_id: 1010, achievement: { "1010": { ... } } }
-					 * D) { achievement: { ... } } or { achievement: { "1010": { ... } } }
-					 * E) { achievement_id: 1010, name: ..., children: ... } (already flat)
-					 */
 					let root: any = resp;
 
 					// If array wrapper, unwrap first element
@@ -524,6 +566,7 @@ export class TroopTrack implements INodeType {
 				}
 			}
 
+			// PATROLS
 			if (resource === 'patrols' && operation === 'getMany') {
 				const resp = await troopTrackRequest(this, 'GET', '/v1/events/types');
 
@@ -558,7 +601,7 @@ export class TroopTrack implements INodeType {
 
 			// Output shaping
 			const shouldSplitIntoItems =
-				(resource === 'users' && (operation === 'getMany' || operation === 'getManySimple')) ||
+				(resource === 'users' && (operation === 'getMany' || operation === 'getUsernames')) ||
 				(resource === 'events' && (operation === 'getMany' || operation === 'getTypes')) ||
 				(resource === 'achievements' && operation === 'getMany') ||
 				(resource === 'awardTypes' && operation === 'getMany') ||

@@ -150,4 +150,48 @@ export const usersFields: INodeProperties[] = [
 		default: '{}',
 		description: 'JSON body matching postV1UsersId in TroopTrack Swagger',
 	},
+	{
+		displayName: 'Browserless WebSocket Endpoint',
+		name: 'browserlessWsEndpoint',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
+		description: 'Full Browserless WebSocket endpoint including token query parameter',
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getMany'],
+				returnType: ['extended'],
+			},
+		},
+	},
+	{
+		displayName: 'Browserless WebSocket Endpoint',
+		name: 'browserlessWsEndpoint',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
+		description: 'Full Browserless WebSocket endpoint including token query parameter',
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getUsernames'],
+			},
+		},
+	},
+	{
+		displayName: 'Debug Mode',
+		name: 'debugMode',
+		type: 'boolean',
+		default: false,
+		displayOptions: {
+			show: {
+			resource: ['users'],
+			operation: ['getUsernames'],
+			},
+		},
+		description: 'When enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
+		},
 ];

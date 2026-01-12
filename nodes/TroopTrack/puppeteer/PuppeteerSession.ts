@@ -10,13 +10,18 @@ export type TroopTrackWebAuth = {
   tt_password: string;
 };
 
+/**
+ * Manages a single Puppeteer session for one node execution.
+ * Supports connecting to a remote Browserless instance via WebSocket endpoint.
+ */
 export class TroopTrackPuppeteerSession {
   private browser: Browser | null = null;
   private page: Page | null = null;
 
   constructor(
     private readonly auth: TroopTrackWebAuth,
-    private readonly protocolTimeoutMs = 120000
+    private readonly protocolTimeoutMs = 120000,
+    private readonly browserWSEndpoint?: string,
   ) {}
 
   private get baseUrl(): string {
@@ -24,22 +29,39 @@ export class TroopTrackPuppeteerSession {
     return `https://${sub}.trooptrack.com`;
   }
 
+  private getWsEndpoint(): string | null {
+    const ws = (this.browserWSEndpoint || '').trim();
+    return ws.length ? ws : null;
+  }
+
   async open(): Promise<{ browser: Browser; page: Page }> {
     if (this.browser && this.page) return { browser: this.browser, page: this.page };
 
-    this.browser = await puppeteer.launch({
-      headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-      ],
-      protocolTimeout: this.protocolTimeoutMs,
-    });
+    const wsEndpoint = this.getWsEndpoint();
+
+    if (wsEndpoint) {
+      // Remote Browserless / Chrome instance
+      this.browser = await puppeteer.connect({
+        browserWSEndpoint: wsEndpoint,
+        protocolTimeout: this.protocolTimeoutMs,
+      });
+    } else {
+      // Local fallback (only used if you don't provide a WS endpoint)
+      this.browser = await puppeteer.launch({
+        headless: true,
+        args: [
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+        ],
+        protocolTimeout: this.protocolTimeoutMs,
+      });
+    }
 
     this.page = await this.browser.newPage();
 
     // Default behavior required by you
     this.page.setDefaultNavigationTimeout(this.protocolTimeoutMs);
+    this.page.setDefaultTimeout(this.protocolTimeoutMs);
 
     return { browser: this.browser, page: this.page };
   }
@@ -52,7 +74,6 @@ export class TroopTrackPuppeteerSession {
       timeout: this.protocolTimeoutMs,
     });
 
-    // Fallback selectors. TroopTrack sometimes changes IDs.
     const loginSel = '#user_account_session_login';
     const passSel = '#user_account_session_password';
 
@@ -62,13 +83,14 @@ export class TroopTrackPuppeteerSession {
 
     // Primary button selector plus fallback
     const submitSelector = '#new_user_account_session > input.btn.btn-secondary';
-    const submitFallback = 'form#new_user_account_session input[type="submit"], form#new_user_account_session button[type="submit"]';
+    const submitFallback =
+      'form#new_user_account_session input[type="submit"], form#new_user_account_session button[type="submit"]';
 
-    const btn = await page.$(submitSelector) ?? await page.$(submitFallback);
+    const btn = (await page.$(submitSelector)) ?? (await page.$(submitFallback));
     if (!btn) throw new Error('Login submit button not found');
 
     await Promise.all([
-      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: this.protocolTimeoutMs }).catch(() => null),
+      page.waitForNavigation({ waitUntil: 'domcontentloaded', timeout: this.protocolTimeoutMs }),
       btn.click(),
     ]);
 
@@ -77,10 +99,19 @@ export class TroopTrackPuppeteerSession {
 
   async close(): Promise<void> {
     try {
-      await this.page?.close().catch(() => null);
-      await this.browser?.close().catch(() => null);
+      if (this.page) {
+        await this.page.close().catch(() => {});
+      }
     } finally {
       this.page = null;
+    }
+
+    try {
+      if (this.browser) {
+        // If we connected to Browserless, this disconnects without shutting down the service.
+        await this.browser.close().catch(() => {});
+      }
+    } finally {
       this.browser = null;
     }
   }
