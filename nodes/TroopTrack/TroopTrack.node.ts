@@ -21,6 +21,10 @@ import { patrolsDescription } from './descriptions/Patrols.description';
 import { TroopTrackPuppeteerSession } from './puppeteer/PuppeteerSession';
 import { setNullFields, mergeFieldsByUserId } from './puppeteer/UserInput';
 import { scrapeTroopTrackUsernames } from './puppeteer/scrapers/usernames';
+import { scrapeTroopTrackHealthFormDates } from './puppeteer/scrapers/healthForms';
+import { scrapeTroopTrackTxtOptOut } from './puppeteer/scrapers/txtOptOut';
+import { scrapeTroopTrackCounseledMeritBadges } from './puppeteer/scrapers/counseledMeritBadges';
+
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -132,9 +136,19 @@ export class TroopTrack implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			// Run-once operations: these process the full input set in one pass
-			if (resource === 'users' && operation === 'getUsernames' && i !== 0) {
+			if (
+				resource === 'users' &&
+				(
+					operation === 'getUsernames' ||
+					operation === 'getHealthFormDates' ||
+					operation === 'getTxtOptOut' ||
+					operation === 'getCounseledMeritBadges'
+				) &&
+				i !== 0
+			) {
 				continue;
 			}
+
 
 			let responseData: any;
 
@@ -290,6 +304,278 @@ export class TroopTrack implements INodeType {
 					if (debugMode) {
 						enriched = enriched.map(u => ({ ...u, _debug: debug }));
 					}
+					responseData = enriched;
+				}
+
+				if (operation === 'getHealthFormDates') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							loggedIn: false,
+							finalUrl: null,
+							medicalBookUrl: null,
+							rowCount: null,
+						},
+					};
+
+					const userIdField = this.getNodeParameter('userIdField', 0, 'user_id') as string;
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0) as string;
+
+					const inputItems = items;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Mirror the input items as plain JSON records, with nullable fields
+					let enriched: Array<Record<string, any>> = inputItems.map((it) => ({
+						...(it.json as Record<string, any>),
+						PartA: null as string | null,
+						PartB: null as string | null,
+						PartC: null as string | null,
+					}));
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const healthMap = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+							debug.puppeteer.finalUrl = page.url();
+
+							// Go to medical book page and record where we actually landed
+							await page.goto(`${baseUrl}/manage/medical_book`, {
+								waitUntil: 'domcontentloaded',
+								timeout: 120000,
+							});
+							debug.puppeteer.medicalBookUrl = page.url();
+
+							// Count rows using common DataTables IDs, for debugging only
+							const rowCount0 = await page
+								.$$eval('#DataTables_Table_0 > tbody tr', (els) => els.length)
+								.catch(() => 0);
+							const rowCount1 = await page
+								.$$eval('#DataTables_Table_1 > tbody tr', (els) => els.length)
+								.catch(() => 0);
+							debug.puppeteer.rowCount = { table0: rowCount0, table1: rowCount1 };
+
+							// Run the scraper (it returns {} if no access, which will keep nulls)
+							return await scrapeTroopTrackHealthFormDates(page, baseUrl, 120000);
+						});
+
+						enriched = enriched.map((u) => {
+							const id = String(u?.[userIdField] ?? '').trim();
+							const hit = id ? healthMap[id] : undefined;
+
+							return {
+								...u,
+								PartA: hit?.PartA ?? null,
+								PartB: hit?.PartB ?? null,
+								PartC: hit?.PartC ?? null,
+							};
+						});
+					} catch (e) {
+						// Requirement: if error or no access, return null fields rather than failing the whole node
+						if (debugMode) {
+							const msg = e instanceof Error ? e.message : String(e);
+							throw new Error(`getHealthFormDates failed: ${msg}. Debug: ${JSON.stringify(debug)}`);
+						}
+					}
+
+					if (debugMode) {
+						enriched = enriched.map((u) => ({ ...u, _debug: debug }));
+					}
+
+					responseData = enriched;
+				}
+				
+				if (operation === 'getTxtOptOut') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							finalUrl: null,
+							textSettingsUrl: null,
+							rowCount: null,
+						},
+					};
+
+					const userIdField = this.getNodeParameter('userIdField', 0, 'user_id') as string;
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0) as string;
+
+					const inputItems = items;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Always include txtOptOut. Default is null (unknown), per your "always exists" rule.
+					// Scrape will populate false for users found on the page (meaning NOT opted out).
+					let enriched: Array<Record<string, any>> = inputItems.map((it) => ({
+						...(it.json as Record<string, any>),
+						txtOptOut: null as boolean | null,
+					}));
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const txtMap = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+							debug.puppeteer.finalUrl = page.url();
+
+							// For debug visibility only. Scraper navigates defensively too.
+							await page.goto(`${baseUrl}/communicate/text_message_settings`, {
+								waitUntil: 'domcontentloaded',
+								timeout: 120000,
+							});
+							debug.puppeteer.textSettingsUrl = page.url();
+
+							const rowCount = await page
+								.$$eval('#text_message_setting > tbody tr', (els) => els.length)
+								.catch(() => 0);
+							debug.puppeteer.rowCount = rowCount;
+
+							// Scraper should return {} on access issues. That keeps null defaults.
+							return await scrapeTroopTrackTxtOptOut(page, baseUrl, 120000);
+						});
+
+						enriched = enriched.map((u) => {
+							const id = String(u?.[userIdField] ?? '').trim();
+							const hit = id ? txtMap[id] : undefined;
+
+							// Semantics:
+							// - If we have a hit, scraper sets txtOptOut = false (NOT opted out).
+							// - If we do not have a hit, we keep null (unknown).
+							return {
+								...u,
+								txtOptOut: hit?.txtOptOut ?? null,
+							};
+						});
+					} catch (e) {
+						// Requirement: do not fail the node. Keep txtOptOut present with null.
+						if (debugMode) {
+							const msg = e instanceof Error ? e.message : String(e);
+							throw new Error(`getTxtOptOut failed: ${msg}. Debug: ${JSON.stringify(debug)}`);
+						}
+					}
+
+					if (debugMode) {
+						enriched = enriched.map((u) => ({ ...u, _debug: debug }));
+					}
+
+					responseData = enriched;
+				}
+
+				if (operation === 'getCounseledMeritBadges') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							finalUrl: null,
+							counseledMeritBadgesUrl: null,
+							rowCount: null,
+						},
+					};
+
+					const userIdField = this.getNodeParameter('userIdField', 0, 'user_id') as string;
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0) as string;
+
+					const inputItems = items;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Always include counseled_MBs, even if empty
+					let enriched: Array<Record<string, any>> = inputItems.map((it) => ({
+						...(it.json as Record<string, any>),
+						counseled_MBs: [] as string[],
+					}));
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const mbcMap = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+							debug.puppeteer.finalUrl = page.url();
+
+							// For debug visibility only. Scraper navigates defensively too.
+							await page.goto(`${baseUrl}/manage/counseled_merit_badges`, {
+								waitUntil: 'domcontentloaded',
+								timeout: 120000,
+							});
+							debug.puppeteer.counseledMeritBadgesUrl = page.url();
+
+							const rowCount = await page.$$eval('table tbody tr', (els) => els.length).catch(() => 0);
+							debug.puppeteer.rowCount = rowCount;
+
+							// Scraper returns {} on access issues. That keeps defaults.
+							return await scrapeTroopTrackCounseledMeritBadges(page, baseUrl, 120000);
+						});
+
+						enriched = enriched.map((u) => {
+							const id = String(u?.[userIdField] ?? '').trim();
+							const hit = id ? mbcMap[id] : undefined;
+
+							return {
+								...u,
+								counseled_MBs: Array.isArray(hit?.counseled_MBs) ? hit.counseled_MBs : [],
+							};
+						});
+					} catch (e) {
+						// Requirement: do not fail the node. Keep counseled_MBs present with [].
+						if (debugMode) {
+							const msg = e instanceof Error ? e.message : String(e);
+							throw new Error(`getCounseledMeritBadges failed: ${msg}. Debug: ${JSON.stringify(debug)}`);
+						}
+					}
+
+					if (debugMode) {
+						enriched = enriched.map((u) => ({ ...u, _debug: debug }));
+					}
+
 					responseData = enriched;
 				}
 			}
@@ -601,7 +887,7 @@ export class TroopTrack implements INodeType {
 
 			// Output shaping
 			const shouldSplitIntoItems =
-				(resource === 'users' && (operation === 'getMany' || operation === 'getUsernames')) ||
+				(resource === 'users' && (operation === 'getMany' || operation === 'getUsernames' || operation === 'getHealthFormDates' || operation === 'getTxtOptOut' || operation === 'getCounseledMeritBadges')) ||
 				(resource === 'events' && (operation === 'getMany' || operation === 'getTypes')) ||
 				(resource === 'achievements' && operation === 'getMany') ||
 				(resource === 'awardTypes' && operation === 'getMany') ||

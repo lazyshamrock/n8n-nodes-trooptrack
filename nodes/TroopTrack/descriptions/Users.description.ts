@@ -1,5 +1,18 @@
 import type { INodeProperties } from 'n8n-workflow';
 
+/**
+ * Small helper so we can reuse a base field and only vary displayOptions.show.
+ */
+function withShow(
+	base: INodeProperties,
+	show: NonNullable<NonNullable<INodeProperties['displayOptions']>['show']>,
+): INodeProperties {
+	return {
+		...base,
+		displayOptions: { show },
+	};
+}
+
 export const usersOperations: INodeProperties[] = [
 	{
 		displayName: 'Operation',
@@ -10,24 +23,45 @@ export const usersOperations: INodeProperties[] = [
 		options: [
 			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/users', action: 'Get all TroopTrack users in unit' },
 			{ name: 'Get By Id', value: 'getById', description: 'GET /v1/users/{id}', action: 'Get a TroopTrack user by ID' },
-			{ name: 'Get TroopTrack Usernames', value: 'getUsernames', description: 'Scrape TroopTrack usernames from the web UI (/manage/users)', action: 'Get TroopTrack usernames'},
-			{ name: 'Update', value: 'update', description: 'POST /v1/users/{id}' },
+			{ name: 'Get TroopTrack Usernames', value: 'getUsernames', description: 'Get the TroopTrack username associated with a specific user_id.  [Scrapes data from the web UI (/manage/users)]', action: 'Get TroopTrack usernames' },
+			{ name: 'Get Health Form Dates', value: 'getHealthFormDates', description: 'Get Health Form dates (PartA, PartB, PartC) for users keyed by user_id. [Scrapes data from the web UI (/manage/medical_book)]', action: 'Get health form dates' },
+			{ name: 'Get Text Message Opt Out', value: 'getTxtOptOut', description: 'Get text message opt-out status (txtOptOut) for users keyed by user_id. [Scrapes data from the web UI (/communicate/text_message_settings)]', action: 'Get text message opt out status'},
+			{ name: 'Get Counseled Merit Badges', value: 'getCounseledMeritBadges', description: 'Get counseled merit badges (counseled_MBs) for users keyed by user_id. [Scrapes data from the web UI (/manage/counseled_merit_badges)]', action: 'Get counseled merit badges' },
+			{ name: 'Update User', value: 'update', description: 'POST /v1/users/{id}' },
 		],
 		default: 'getMany',
 	},
 ];
 
+// Define shared fields once
+const browserlessWsEndpointBase: INodeProperties = {
+	displayName: 'Browserless WebSocket Endpoint',
+	name: 'browserlessWsEndpoint',
+	type: 'string',
+	required: true,
+	default: '',
+	placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
+	description: 'Full Browserless WebSocket endpoint including token query parameter',
+};
+
+const debugModeBase: INodeProperties = {
+	displayName: 'Debug Mode',
+	name: 'debugMode',
+	type: 'boolean',
+	default: false,
+	description:
+		'When enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
+};
+
 export const usersFields: INodeProperties[] = [
-	{
-		displayName: 'User Id',
+	{ 	displayName: 'User Id',
 		name: 'userId',
 		type: 'number',
 		required: true,
 		displayOptions: { show: { resource: ['users'], operation: ['getById', 'update'] } },
 		default: 0,
 	},
-	{
-		displayName: 'Return Type',
+	{ 	displayName: 'Return Type',
 		name: 'returnType',
 		type: 'options',
 		noDataExpression: true,
@@ -40,18 +74,18 @@ export const usersFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-			resource: ['users'],
-			operation: ['getMany'],
+				resource: ['users'],
+				operation: ['getMany'],
 			},
 		},
 	},
-	{
-		displayName: 'Data to Include',
+	{ 	displayName: 'Data to Include',
 		name: 'dataToInclude',
 		type: 'multiOptions',
 		noDataExpression: true,
 		required: true,
-		description: 'Extract additional data for all users based on other API Calls ("Detailed User Data", "Advancement Data") or webscraping via Puppeteer.',
+		description:
+			'Extract additional data for all users based on other API Calls ("Detailed User Data", "Advancement Data") or webscraping via Puppeteer.',
 		default: [
 			'detailedUserData',
 			'advancementData',
@@ -76,22 +110,17 @@ export const usersFields: INodeProperties[] = [
 		],
 		displayOptions: {
 			show: {
-			resource: ['users'],
-			operation: ['getMany'],
-			returnType: ['extended'],
+				resource: ['users'],
+				operation: ['getMany'],
+				returnType: ['extended'],
 			},
 		},
 	},
-	// Award Type (multi-select), shown only when Detailed Advancement Data is selected
-	{
-		displayName: 'Award Type',
+	{ 	displayName: 'Award Type',
 		name: 'advancementAwardTypeIds',
 		type: 'multiOptions',
 		noDataExpression: true,
 		required: true,
-		// Best-effort defaults. In most TroopTrack setups:
-		// 1 = Rank, 2 = Merit Badge.
-		// If your instance differs, just change the selections in the UI.
 		default: [999999998, 999999999],
 		description: 'Filter advancement data by award type (multi-select).',
 		typeOptions: {
@@ -106,9 +135,7 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
-	// Advancement Status (multi-select), shown only when Detailed Advancement Data is selected
-	{
-		displayName: 'Advancement Status',
+	{	displayName: 'Advancement Status',
 		name: 'advancementStatuses',
 		type: 'multiOptions',
 		noDataExpression: true,
@@ -128,16 +155,16 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
-	{
-		displayName: 'User ID Field Name',
+	{	displayName: 'User ID Field Name',
 		name: 'userIdField',
 		type: 'string',
+		required: true,
 		default: 'user_id',
 		description: 'Field on each input item that contains the TroopTrack user id',
 		displayOptions: {
 			show: {
 				resource: ['users'],
-				operation: ['getUsernames'],
+				operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
 			},
 		},
 	},
@@ -150,48 +177,26 @@ export const usersFields: INodeProperties[] = [
 		default: '{}',
 		description: 'JSON body matching postV1UsersId in TroopTrack Swagger',
 	},
-	{
-		displayName: 'Browserless WebSocket Endpoint',
-		name: 'browserlessWsEndpoint',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
-		description: 'Full Browserless WebSocket endpoint including token query parameter',
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['getMany'],
-				returnType: ['extended'],
-			},
-		},
-	},
-	{
-		displayName: 'Browserless WebSocket Endpoint',
-		name: 'browserlessWsEndpoint',
-		type: 'string',
-		required: true,
-		default: '',
-		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
-		description: 'Full Browserless WebSocket endpoint including token query parameter',
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['getUsernames'],
-			},
-		},
-	},
-	{
-		displayName: 'Debug Mode',
-		name: 'debugMode',
-		type: 'boolean',
-		default: false,
-		displayOptions: {
-			show: {
-			resource: ['users'],
-			operation: ['getUsernames'],
-			},
-		},
-		description: 'When enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
-		},
+
+	// Reuse the same Browserless field with different show rules
+	withShow(browserlessWsEndpointBase, {
+		resource: ['users'],
+		operation: ['getMany'],
+		returnType: ['extended'],
+	}),
+	withShow(browserlessWsEndpointBase, {
+		resource: ['users'],
+		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
+	}),
+
+	withShow(debugModeBase, {
+		resource: ['users'],
+		operation: ['getMany'],
+		returnType: ['extended'],
+	}),
+
+	withShow(debugModeBase, {
+		resource: ['users'],
+		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges'],
+	}),
 ];
