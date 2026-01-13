@@ -16,7 +16,7 @@ export const userAchievementsOperations: INodeProperties[] = [
 			{
 				name: 'Get By ID',
 				value: 'getById',
-				description: 'GET /v1/user_achievement/{id}',
+				description: 'GET /v1/user_achievements/{id}',
 			},
 		],
 		default: 'getMany',
@@ -37,5 +37,23 @@ export const userAchievementsFields: INodeProperties[] = [
 			},
 		},
 		description: 'The ID used in GET /v1/user_achievement/{id}',
+	},
+	// Award Type for Get Many
+	{
+		displayName: 'Award Type',
+		name: 'awardTypeId',
+		type: 'options',
+		required: true,
+		default: 999999998,
+		description: 'The Award Type associated with the User Achievement',
+		typeOptions: {
+			loadOptionsMethod: 'getAwardTypes',
+		},
+		displayOptions: {
+			show: {
+				resource: ['userAchievements'],
+				operation: ['getMany', 'getById'],
+			},
+		},
 	},
 ];

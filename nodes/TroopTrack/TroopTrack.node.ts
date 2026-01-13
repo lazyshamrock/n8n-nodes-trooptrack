@@ -17,6 +17,7 @@ import { awardTypesOperations, awardTypesFields } from './descriptions/AwardType
 import { mailingListsOperations, mailingListsFields } from './descriptions/MailingLists.description';
 import { photoAlbumsOperations, photoAlbumsFields } from './descriptions/PhotoAlbums.description';
 import { userAchievementsOperations, userAchievementsFields } from './descriptions/UserAchievements.description';
+import { positionsOperations, positionsFields } from './descriptions/Positions.description';
 import { patrolsDescription } from './descriptions/Patrols.description';
 import { TroopTrackPuppeteerSession } from './puppeteer/PuppeteerSession';
 import { setNullFields, mergeFieldsByUserId } from './puppeteer/UserInput';
@@ -25,7 +26,9 @@ import { scrapeTroopTrackHealthFormDates } from './puppeteer/scrapers/healthForm
 import { scrapeTroopTrackTxtOptOut } from './puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from './puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from './puppeteer/scrapers/profileFields';
-
+import { scrapePositions } from './puppeteer/scrapers/positions';
+import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
+import { scrapePermissions } from './puppeteer/scrapers/permissions';
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -54,7 +57,9 @@ export class TroopTrack implements INodeType {
 					{ name: 'Events', value: 'events' },
 					{ name: 'Mailing Lists', value: 'mailingLists' },
 					{ name: 'Patrols', value: 'patrols' },
+					{ name: 'Permissions', value: 'permissions' },
 					{ name: 'Photo Albums', value: 'photoAlbums' },
+					{ name: 'Positions', value: 'positions' },
 					{ name: 'Tokens', value: 'tokens' },
 					{ name: 'Users', value: 'users' },
 					{ name: 'User Achievements', value: 'userAchievements' },
@@ -70,7 +75,9 @@ export class TroopTrack implements INodeType {
 			...eventsOperations,
 			...mailingListsOperations,
 			...patrolsDescription,
+			...permissionsOperations,
 			...photoAlbumsOperations,
+			...positionsOperations,
 			...tokensOperations,
 			...usersOperations,
 			...userAchievementsOperations,
@@ -81,7 +88,9 @@ export class TroopTrack implements INodeType {
 			...awardTypesFields,
 			...eventsFields,
 			...mailingListsFields,
+			...permissionsFields,
 			...photoAlbumsFields,
+			...positionsFields,
 			...usersFields,
 			...userAchievementsFields,
 			...genericFields,
@@ -137,20 +146,26 @@ export class TroopTrack implements INodeType {
 			const operation = this.getNodeParameter('operation', i) as string;
 
 			// Run-once operations: these process the full input set in one pass
-			if ( resource === 'users' &&
+			if (
 				(
-					operation === 'getUsernames' ||
-					operation === 'getHealthFormDates' ||
-					operation === 'getTxtOptOut' ||
-					operation === 'getCounseledMeritBadges' ||
-					operation === 'getBsaId' ||
-					operation === 'getDateJoined' ||
-					operation === 'getAllergies'
+					(resource === 'users' &&
+						(
+							operation === 'getUsernames' ||
+							operation === 'getHealthFormDates' ||
+							operation === 'getTxtOptOut' ||
+							operation === 'getCounseledMeritBadges' ||
+							operation === 'getBsaId' ||
+							operation === 'getDateJoined' ||
+							operation === 'getAllergies'
+						)) ||
+					(resource === 'positions' && operation === 'getMany') ||
+					(resource === 'permissions' && operation === 'getMany')
 				) &&
 				i !== 0
 			) {
 				continue;
 			}
+
 
 			let responseData: any;
 
@@ -290,24 +305,202 @@ export class TroopTrack implements INodeType {
 						scout: u?.scout,
 						}));
 					} else if (returnType === 'extended') {
-						// Stub for now. Return API payload (same as 'api') plus metadata about the user's selection.
 						const dataToInclude = this.getNodeParameter('dataToInclude', i, []) as string[];
+						const debugMode = this.getNodeParameter('debugMode', i, false) as boolean;
+						const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', i, '') as string;
 
-						const raw = await troopTrackRequest(this, 'GET', '/v1/users', {}, {});
-						const wrapper = Array.isArray(raw) ? raw[0] : raw;
+						// 1) Seed via the same source as Simple: /v1/events/types -> wrapper.users
+						const seedRaw = await troopTrackRequest(this, 'GET', '/v1/events/types', {}, {});
+						const seedWrapper = Array.isArray(seedRaw) ? seedRaw[0] : seedRaw;
+						const seedUsers: any[] = Array.isArray(seedWrapper?.users) ? seedWrapper.users : [];
 
-						const users = Array.isArray(wrapper?.users) ? wrapper.users : Array.isArray(wrapper) ? wrapper : [];
-						const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', i) as string;
+						const userIds: number[] = seedUsers
+							.map((u: any) => Number(u?.user_id))
+							.filter((n: number) => Number.isFinite(n) && n > 0);
 
-						responseData = users.map((u: any) => ({
-							...u,
-							_extended: {
-								enabled: true,
-								dataToInclude,
-								browserlessConfigured: Boolean(browserlessWsEndpoint && browserlessWsEndpoint.trim()),
-								note: 'Extended return type is not implemented yet. Returning API payload as a placeholder.',
-							},
+						// 2) Fetch full API payload for each user via GET /v1/users/{id} (sequential)
+						const detailedUsers: any[] = [];
+						for (const userId of userIds) {
+							try {
+								const resp = await troopTrackRequest(this, 'GET', `/v1/users/${userId}`);
+								const userObj = resp?.user ?? resp;
+
+								// Ensure user_id is always present for later merges
+								if (userObj && typeof userObj === 'object') {
+									(userObj as any).user_id = (userObj as any).user_id ?? userId;
+									detailedUsers.push(userObj);
+								} else {
+									detailedUsers.push({ user_id: userId });
+								}
+							} catch (e) {
+								if (debugMode) {
+									const msg = e instanceof Error ? e.message : String(e);
+									throw new Error(`Users > Get Many > Extended: GET /v1/users/${userId} failed: ${msg}`);
+								}
+								// Requirement: return as much as we can. Keep a record with at least user_id.
+								detailedUsers.push({ user_id: userId });
+							}
+						}
+
+						// 3) Optional enrichment (API + scraping), driven by dataToInclude
+						const wants = {
+							advancementData: dataToInclude.includes('advancementData'),
+							counseledMeritBadges: dataToInclude.includes('counseledMeritBadges'),
+							troopTrackUsername: dataToInclude.includes('troopTrackUsername'),
+							healthFormDates: dataToInclude.includes('healthFormDates'),
+							textMessageOptOut: dataToInclude.includes('textMessageOptOut'),
+							bsaId: dataToInclude.includes('bsaId'),
+							dateJoined: dataToInclude.includes('dateJoined'),
+							allergies: dataToInclude.includes('allergies'),
+						};
+
+						const needsScrape =
+							wants.counseledMeritBadges ||
+							wants.troopTrackUsername ||
+							wants.healthFormDates ||
+							wants.textMessageOptOut ||
+							wants.bsaId ||
+							wants.dateJoined ||
+							wants.allergies;
+
+						// Only require browserless when scrape-based fields are requested
+						if (needsScrape && (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '')) {
+							throw new Error(
+								'Browserless WebSocket Endpoint is required when one or more selected Data to Include options require web scraping.',
+							);
+						}
+
+						// Default null fields for requested enrichments (keeps output predictable)
+						let enriched: Array<Record<string, any>> = detailedUsers.map((u) => ({
+							...(u as Record<string, any>),
+							...(wants.troopTrackUsername ? { user_name: null as string | null } : {}),
+							...(wants.healthFormDates
+								? {
+										PartA: null as string | null,
+										PartB: null as string | null,
+										PartC: null as string | null,
+								}
+								: {}),
+							...(wants.textMessageOptOut ? { txtOptOut: null as boolean | null } : {}),
+							...(wants.counseledMeritBadges ? { counseled_MBs: null as any } : {}),
+							...(wants.bsaId ? { BSA_id: null as string | null } : {}),
+							...(wants.dateJoined ? { date_joined: null as string | null } : {}),
+							...(wants.allergies ? { allergies: null as string | null } : {}),
+							// Placeholder per current requirement
+							...(wants.advancementData ? { advancementData: null as any } : {}),
 						}));
+
+						if (needsScrape) {
+							let usernameMap: Record<string, any> = {};
+							let healthMap: Record<string, any> = {};
+							let txtMap: Record<string, any> = {};
+							let counseledMap: Record<string, any> = {};
+							let profileMap: Record<string, any> = {};
+
+							try {
+								const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+								const auth = {
+									tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+									tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+									tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+								};
+
+								if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+									throw new Error('Missing TroopTrack credentials fields required for web login');
+								}
+
+								const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+								const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+								const userIdsForScrape: string[] = enriched
+									.map((u) => String(u?.user_id ?? '').trim())
+									.filter((v) => v !== '');
+
+								// Union of profile fields requested
+								const profileFields: Array<'BSA_id' | 'date_joined' | 'allergies'> = [];
+								if (wants.bsaId) profileFields.push('BSA_id');
+								if (wants.dateJoined) profileFields.push('date_joined');
+								if (wants.allergies) profileFields.push('allergies');
+
+								await session.withSession(async (page) => {
+									if (wants.troopTrackUsername) {
+										await page.goto(`${baseUrl}/manage/users`, {
+											waitUntil: 'domcontentloaded',
+											timeout: 120000,
+										});
+										usernameMap = await scrapeTroopTrackUsernames(page, baseUrl, 120000);
+									}
+
+									if (wants.healthFormDates) {
+										await page.goto(`${baseUrl}/manage/medical_book`, {
+											waitUntil: 'domcontentloaded',
+											timeout: 120000,
+										});
+										healthMap = await scrapeTroopTrackHealthFormDates(page, baseUrl, 120000);
+									}
+
+									if (wants.textMessageOptOut) {
+										await page.goto(`${baseUrl}/communicate/text_message_settings`, {
+											waitUntil: 'domcontentloaded',
+											timeout: 120000,
+										});
+										txtMap = await scrapeTroopTrackTxtOptOut(page, baseUrl, 120000);
+									}
+
+									if (wants.counseledMeritBadges) {
+										await page.goto(`${baseUrl}/manage/counseled_merit_badges`, {
+											waitUntil: 'domcontentloaded',
+											timeout: 120000,
+										});
+										counseledMap = await scrapeTroopTrackCounseledMeritBadges(page, baseUrl, 120000);
+									}
+
+									// Profile pages: run once for the union of requested fields
+									if (profileFields.length > 0) {
+										profileMap = await scrapeTroopTrackProfileFields(page, baseUrl, userIdsForScrape, profileFields, {
+											delayMs: 300,
+											retries: 1,
+											debug: debugMode,
+										});
+									}
+								});
+
+								// Merge scraped maps into each user record
+								enriched = enriched.map((u) => {
+									const id = String(u?.user_id ?? '').trim();
+									const out: Record<string, any> = { ...u };
+
+									if (wants.troopTrackUsername) out.user_name = usernameMap?.[id]?.user_name ?? null;
+
+									if (wants.healthFormDates) {
+										out.PartA = healthMap?.[id]?.PartA ?? null;
+										out.PartB = healthMap?.[id]?.PartB ?? null;
+										out.PartC = healthMap?.[id]?.PartC ?? null;
+									}
+
+									if (wants.textMessageOptOut) out.txtOptOut = txtMap?.[id]?.txtOptOut ?? null;
+									if (wants.counseledMeritBadges) out.counseled_MBs = counseledMap?.[id]?.counseled_MBs ?? null;
+
+									if (profileFields.length > 0) {
+										const hit = profileMap?.[id];
+										if (wants.bsaId) out.BSA_id = hit && Object.prototype.hasOwnProperty.call(hit, 'BSA_id') ? hit.BSA_id : null;
+										if (wants.dateJoined) out.date_joined = hit && Object.prototype.hasOwnProperty.call(hit, 'date_joined') ? hit.date_joined : null;
+										if (wants.allergies) out.allergies = hit && Object.prototype.hasOwnProperty.call(hit, 'allergies') ? hit.allergies : null;
+									}
+
+									return out;
+								});
+							} catch (e) {
+								if (debugMode) {
+									const msg = e instanceof Error ? e.message : String(e);
+									throw new Error(`Users > Get Many > Extended: scraping failed: ${msg}`);
+								}
+								// Requirement: keep null fields rather than failing
+							}
+						}
+
+						responseData = enriched;
 					} else {
 						// returnType === 'api'
 						const raw = await troopTrackRequest(this, 'GET', '/v1/users', {}, {});
@@ -695,6 +888,130 @@ export class TroopTrack implements INodeType {
 
 			}
 
+			// PERMISSIONS
+			if (resource === 'permissions') {
+				if (operation === 'getMany') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const debug: Record<string, any> = {
+						puppeteer: {
+							launched: false,
+							finalUrl: null,
+							privilegesUrl: null,
+							resultCount: null,
+						},
+					};
+
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+					const delayMs = this.getNodeParameter('delayMs', 0, 300) as number;
+					const batchSize = this.getNodeParameter('batchSize', 0, 0) as number; // not used for this op, kept for consistency
+					const demoAdultUserId = this.getNodeParameter('demoAdultUserId', 0) as number;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+					if (!demoAdultUserId) {
+						throw new Error('demoAdultUserId is required');
+					}
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						debug.puppeteer.privilegesUrl = `${baseUrl}/manage/users/${demoAdultUserId}?tab=privileges`;
+
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const permissions = await session.withSession(async (page) => {
+							debug.puppeteer.launched = true;
+							debug.puppeteer.finalUrl = page.url();
+
+							if (delayMs > 0) {
+								await new Promise((resolve) => setTimeout(resolve, delayMs));
+							}
+
+							const result = await scrapePermissions(page, { baseUrl, demoAdultUserId });
+							debug.puppeteer.resultCount = Array.isArray(result) ? result.length : null;
+							return result;
+						});
+
+						responseData = permissions;
+
+						if (debugMode && Array.isArray(responseData)) {
+							responseData = responseData.map((p: any) => ({ ...p, _debug: debug }));
+						}
+					} catch (e) {
+						if (debugMode) throw e;
+						responseData = [];
+					}
+				}
+			}
+
+			// POSITIONS
+			if (resource === 'positions') {
+				if (operation === 'getMany') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+					const delayMs = this.getNodeParameter('delayMs', 0, 300) as number;
+					const batchSize = this.getNodeParameter('batchSize', 0, 0) as number; // currently unused
+					const demoScoutUserId = this.getNodeParameter('demoScoutUserId', 0) as number;
+					const demoAdultUserId = this.getNodeParameter('demoAdultUserId', 0) as number;
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+					if (!demoScoutUserId || !demoAdultUserId) {
+						throw new Error('demoScoutUserId and demoAdultUserId are required');
+					}
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						const positions = await session.withSession(async (page) => {
+							if (delayMs > 0) {
+								await new Promise((resolve) => setTimeout(resolve, delayMs));
+							}
+
+							return scrapePositions(page, {
+								baseUrl,
+								demoScoutUserId,
+								demoAdultUserId,
+							});
+						});
+
+						responseData = positions;
+					} catch (e) {
+						if (debugMode) {
+							throw e;
+						}
+						responseData = [];
+					}
+				}
+			}
+
 			// EVENTS
 			if (resource === 'events') {
 				if (operation === 'getMany') {
@@ -952,18 +1269,14 @@ export class TroopTrack implements INodeType {
 
 				if (operation === 'getById') {
 					const userAchievementId = this.getNodeParameter('userAchievementId', i) as number;
+					const awardTypeId = this.getNodeParameter('awardTypeId', i) as number;
 
-					const response = await troopTrackRequest(
+					responseData = await troopTrackRequest(
 						this,
 						'GET',
-						`/v1/user_achievement/${userAchievementId}`,
-						{},   // body (required, even if unused)
-						{},   // query (optional but keeps signature consistent)
+						`/v1/user_achievements/${userAchievementId}`,
+						{ award_type_id: awardTypeId }, // query string
 					);
-
-					// If the API returns a wrapper, unwrap it here.
-					// Otherwise just return the object as-is.
-					returnData.push(response);
 				}
 			}
 
