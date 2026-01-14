@@ -30,6 +30,8 @@ import { scrapePositions } from './puppeteer/scrapers/positions';
 import { createPositionAssignments } from './puppeteer/scrapers/positions.createAssignments';
 import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
 import { scrapePermissions } from './puppeteer/scrapers/permissions';
+import { setTroopTrackUserPermissions } from './puppeteer/scrapers/permissionsSet';
+
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -166,7 +168,8 @@ export class TroopTrack implements INodeType {
 						)) ||
 					(resource === 'permissions' && 
 						(
-							operation === 'getMany'
+							operation === 'getMany' ||
+							operation === 'setPermissions'
 						))
 				) &&
 				i !== 0
@@ -961,6 +964,132 @@ export class TroopTrack implements INodeType {
 					} catch (e) {
 						if (debugMode) throw e;
 						responseData = [];
+					}
+				}
+
+				if (operation === 'setPermissions') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					// These three parameters are the names of fields in the incoming JSON.
+					// They should be strings like "user_id", "access_level", "granted_permissions".
+					const userIdFieldName = this.getNodeParameter('user_id', 0) as string;
+					const accessLevelFieldName = this.getNodeParameter('access_level', 0) as string;
+					const grantedPermissionsFieldName = this.getNodeParameter('granted_permissions', 0) as string;
+
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+
+					// Support either delayMs/batchSize or delay/batch depending on how your description file is named.
+					const getParamSafe = <T>(name: string, fallback: T): T => {
+						try {
+							return this.getNodeParameter(name, 0, fallback as any) as T;
+						} catch {
+							return fallback;
+						}
+					};
+
+					const delayMs = getParamSafe<number>('delayMs', getParamSafe<number>('delay', 300));
+					const batchSize = getParamSafe<number>('batchSize', getParamSafe<number>('batch', 0));
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// 1) Validate granted_permissions is an array of numbers on every item
+					for (let idx = 0; idx < items.length; idx++) {
+						const item = items[idx];
+						if (!item || !item.json) {
+							throw new Error(`Missing input item at index ${idx}`);
+						}
+						const row = item.json as Record<string, any>;
+
+						const gp = row?.[grantedPermissionsFieldName];
+
+						const isValid =
+							Array.isArray(gp) &&
+							gp.every((v: any) => typeof v === 'number' && Number.isFinite(v));
+
+						if (!isValid) {
+							throw new Error(
+								`Invalid "${grantedPermissionsFieldName}" at item index ${idx}. Expected an array of numbers.`,
+							);
+						}
+					}
+
+					// 2) Call /v1/tokens and confirm required privileges
+					const tokenResp: any = await troopTrackRequest(this, 'GET', '/v1/tokens');
+
+					const usersArr: any[] = Array.isArray(tokenResp?.users) ? tokenResp.users : [];
+					const me = usersArr[0];
+
+					const my_user_id = Number(me?.user_id);
+					const privileges: string[] = Array.isArray(me?.privileges) ? me.privileges : [];
+
+					const hasEditUserProfile = privileges.includes('Edit user profile');
+					const hasManagePrivileges = privileges.includes('Manage privileges');
+
+					if (!Number.isFinite(my_user_id)) {
+						throw new Error('Unable to determine your user_id from /v1/tokens.');
+					}
+
+					if (!hasEditUserProfile || !hasManagePrivileges) {
+						throw new Error(
+							'Insufficient privileges. You must have both "Edit user profile" and "Manage privileges".',
+						);
+					}
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const baseUrl = `https://${auth.tt_sub_domain}.trooptrack.com`;
+						const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+
+						// Build a plain input array (one per incoming item)
+						const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);
+
+						const result = await session.withSession(async (page) => {
+							if (delayMs > 0) {
+								await new Promise((resolve) => setTimeout(resolve, delayMs));
+							}
+
+							// Cast to any so TS does not get picky about argument counts while your scraper evolves.
+							return await (setTroopTrackUserPermissions as any)(page, {
+								baseUrl,
+								my_user_id,
+								items: inputRows,
+								fieldNames: {
+									user_id: userIdFieldName,
+									access_level: accessLevelFieldName,
+									granted_permissions: grantedPermissionsFieldName,
+								},
+								options: {
+									debugMode,
+									delayMs,
+									batchSize,
+								},
+							});
+						});
+
+						// Expect scraper returns an array of output rows
+						responseData = result;
+					} catch (e) {
+						if (debugMode) throw e;
+
+						const msg = e instanceof Error ? e.message : String(e);
+						// Non-debug mode: return inputs with an errors field populated
+						responseData = items.map((it) => ({
+							...(it.json as Record<string, any>),
+							errors: [msg],
+						}));
 					}
 				}
 			}
