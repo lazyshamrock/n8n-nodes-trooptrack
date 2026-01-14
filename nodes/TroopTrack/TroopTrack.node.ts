@@ -27,6 +27,7 @@ import { scrapeTroopTrackTxtOptOut } from './puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from './puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from './puppeteer/scrapers/profileFields';
 import { scrapePositions } from './puppeteer/scrapers/positions';
+import { createPositionAssignments } from './puppeteer/scrapers/positions.createAssignments';
 import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
 import { scrapePermissions } from './puppeteer/scrapers/permissions';
 
@@ -158,8 +159,15 @@ export class TroopTrack implements INodeType {
 							operation === 'getDateJoined' ||
 							operation === 'getAllergies'
 						)) ||
-					(resource === 'positions' && operation === 'getMany') ||
-					(resource === 'permissions' && operation === 'getMany')
+					(resource === 'positions' && 
+						(
+							operation === 'getMany' ||
+							operation === 'createAssignments'
+						)) ||
+					(resource === 'permissions' && 
+						(
+							operation === 'getMany'
+						))
 				) &&
 				i !== 0
 			) {
@@ -1008,6 +1016,117 @@ export class TroopTrack implements INodeType {
 							throw e;
 						}
 						responseData = [];
+					}
+				}
+
+				if (operation === 'createAssignments') {
+					const debugMode = this.getNodeParameter('debugMode', 0, false) as boolean;
+
+					const browserlessWsEndpoint = this.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+					const delayMs = this.getNodeParameter('delayMs', 0, 300) as number;
+					const batchSize = this.getNodeParameter('batchSize', 0, 0) as number;
+
+					// Field mapping (from node UI)
+					const mapping = this.getNodeParameter('fieldMapping', 0, {}) as any;
+
+					const userIdField = String(mapping.userIdField ?? 'user_id');
+					const positionIdField = String(mapping.positionIdField ?? 'position_id');
+					const startDateField = String(mapping.startDateField ?? 'start_date');
+					const endDateField = String(mapping.endDateField ?? 'end_date');
+
+					// Chromium options (from node UI)
+					const chromiumParam = this.getNodeParameter('chromiumOptions', 0, {}) as any;
+					const chromium = chromiumParam?.options ?? {};
+
+					const navigationTimeoutMs = Number(chromium.navigationTimeoutMs ?? 120000);
+					const waitUntil = String(chromium.waitUntil ?? 'domcontentloaded');
+					const userAgent = String(chromium.userAgent ?? '');
+					const viewportWidth = Number(chromium.viewportWidth ?? 1365);
+					const viewportHeight = Number(chromium.viewportHeight ?? 768);
+					const blockImagesAndMedia = Boolean(
+						typeof chromium.blockImagesAndMedia === 'boolean' ? chromium.blockImagesAndMedia : true,
+					);
+
+					if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+						throw new Error('Browserless WebSocket endpoint is required (including token).');
+					}
+
+					// Build inputs for the scraper from all incoming items
+					const inputRows: Array<Record<string, any>> = items.map((it) => (it.json ?? {}) as Record<string, any>);
+
+					try {
+						const credentials = (await this.getCredentials('troopTrackApi')) as Record<string, any>;
+						const auth = {
+							tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+							tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+							tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+						};
+
+						if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+							throw new Error('Missing TroopTrack credentials fields required for web login');
+						}
+
+						const timeoutForSession = Number.isFinite(navigationTimeoutMs) && navigationTimeoutMs > 0 ? navigationTimeoutMs : 120000;
+						const session = new TroopTrackPuppeteerSession(auth, timeoutForSession, browserlessWsEndpoint);
+
+						const result = await session.withSession(async (page) => {
+							// Optional: let session settle
+							if (delayMs > 0) {
+								await new Promise((resolve) => setTimeout(resolve, delayMs));
+							}
+
+							const scrapeResult = await createPositionAssignments(
+								page,
+								auth.tt_sub_domain,
+								inputRows,
+								{
+									userIdField,
+									positionIdField,
+									startDateField,
+									endDateField,
+								},
+								{
+									delayMs,
+									batchSize,
+									debugMode,
+									chromiumOptions: {
+										navigationTimeoutMs: timeoutForSession,
+										waitUntil: waitUntil as any,
+										userAgent,
+										viewportWidth,
+										viewportHeight,
+										blockImagesAndMedia,
+									},
+								},
+							);
+
+							return scrapeResult;
+						});
+
+						// Build per-item output, one output item per input item
+						const errorsByIndex = new Map<number, any>();
+						for (const e of result?.errors ?? []) {
+							if (typeof e?.index === 'number') errorsByIndex.set(e.index, e);
+						}
+
+						responseData = inputRows.map((row, idx) => {
+							const err = errorsByIndex.get(idx);
+							return {
+								...row,
+								created: !err,
+								error: err?.error ?? null,
+								_url: err?.url ?? null,
+							};
+						});
+					} catch (e) {
+						if (debugMode) throw e;
+
+						// In non-debug mode, return items with an error field populated
+						responseData = inputRows.map((row) => ({
+							...row,
+							created: false,
+							error: String((e as any)?.message ?? e),
+						}));
 					}
 				}
 			}

@@ -19,11 +19,7 @@ export const positionsOperations: INodeProperties[] = [
 		name: 'operation',
 		type: 'options',
 		noDataExpression: true,
-		displayOptions: {
-			show: {
-				resource: ['positions'],
-			},
-		},
+		displayOptions: { show: { resource: ['positions'] } },
 		options: [
 			{
 				name: 'Get All Positions',
@@ -31,12 +27,18 @@ export const positionsOperations: INodeProperties[] = [
 				description: 'Scrape available Scout and Adult leadership positions (web UI)',
 				action: 'Get many positions',
 			},
+			{
+				name: 'Assign Scouts to Positions',
+				value: 'createAssignments',
+				description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)',
+				action: 'Assign Scouts to Positions',
+			},
 		],
 		default: 'getMany',
 	},
 ];
 
-// Define shared Puppeteer fields once
+// Shared fields (mirrors Users.description.ts patterns)
 const browserlessWsEndpointBase: INodeProperties = {
 	displayName: 'Browserless WebSocket Endpoint',
 	name: 'browserlessWsEndpoint',
@@ -56,6 +58,7 @@ const debugModeBase: INodeProperties = {
 };
 
 export const positionsFields: INodeProperties[] = [
+	// Get Many (scrape the dropdown options). Uses 1 demo Scout and 1 demo Adult to open each form.
 	{
 		displayName: 'Scout User ID',
 		name: 'demoScoutUserId',
@@ -68,8 +71,7 @@ export const positionsFields: INodeProperties[] = [
 			},
 		},
 		default: 0,
-		description:
-			'A Scout user ID used only to open the Scout leadership position form',
+		description: 'A Scout user ID used only to open the Scout leadership position form',
 	},
 	{
 		displayName: 'Adult User ID',
@@ -83,11 +85,87 @@ export const positionsFields: INodeProperties[] = [
 			},
 		},
 		default: 0,
-		description:
-			'An Adult user ID used only to open the Adult leadership positions form',
+		description: 'An Adult user ID used only to open the Adult leadership positions form',
 	},
 
-	// Same optional Puppeteer tuning knobs as Users > Get BSA ID
+	// Create Assignments field mapping (simple string params like Users does)
+	{
+		displayName: 'User ID Field Name',
+		name: 'userIdField',
+		type: 'string',
+		required: true,
+		default: 'user_id',
+		description: 'Field on each input item that contains the TroopTrack user id',
+		displayOptions: {
+			show: {
+				resource: ['positions'],
+				operation: ['createAssignments'],
+			},
+		},
+	},
+	{
+		displayName: 'Position ID Field Name',
+		name: 'positionIdField',
+		type: 'string',
+		required: true,
+		default: 'position_id',
+		description: 'Field on each input item that contains the TroopTrack position id',
+		displayOptions: {
+			show: {
+				resource: ['positions'],
+				operation: ['createAssignments'],
+			},
+		},
+	},
+	{
+		displayName: 'Start Date Field Name',
+		name: 'startDateField',
+		type: 'string',
+		required: true,
+		default: 'start_date',
+		description: 'Field on each input item that contains the start date (expected YYYY-MM-DD)',
+		displayOptions: {
+			show: {
+				resource: ['positions'],
+				operation: ['createAssignments'],
+			},
+		},
+	},
+	{
+		displayName: 'End Date Field Name',
+		name: 'endDateField',
+		type: 'string',
+		required: true,
+		default: 'end_date',
+		description: 'Field on each input item that contains the end date (expected YYYY-MM-DD)',
+		displayOptions: {
+			show: {
+				resource: ['positions'],
+				operation: ['createAssignments'],
+			},
+		},
+	},
+
+	// Browserless and Debug (reused, same pattern as Users.description.ts)
+	withShow(browserlessWsEndpointBase, {
+		resource: ['positions'],
+		operation: ['getMany'],
+	}),
+	withShow(browserlessWsEndpointBase, {
+		resource: ['positions'],
+		operation: ['createAssignments'],
+	}),
+
+	withShow(debugModeBase, {
+		resource: ['positions'],
+		operation: ['getMany'],
+	}),
+	withShow(debugModeBase, {
+		resource: ['positions'],
+		operation: ['createAssignments'],
+	}),
+
+	// Delay and Batch (mirrors Users.description.ts)
 	{
 		displayName: 'Delay (ms)',
 		name: 'delayMs',
@@ -100,7 +178,7 @@ export const positionsFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['positions'],
-				operation: ['getMany'],
+				operation: ['getMany', 'createAssignments'],
 			},
 		},
 	},
@@ -110,25 +188,15 @@ export const positionsFields: INodeProperties[] = [
 		type: 'number',
 		default: 0,
 		description:
-			'Optional. Process work in chunks. 0 means no batching. Useful to reduce long-running sessions.',
+			'Optional. Process items in chunks. 0 means no batching. Useful to reduce long-running sessions.',
 		typeOptions: {
 			minValue: 0,
 		},
 		displayOptions: {
 			show: {
 				resource: ['positions'],
-				operation: ['getMany'],
+				operation: ['getMany', 'createAssignments'],
 			},
 		},
 	},
-
-	// Reuse Browserless + Debug like Users.description.ts does for getBsaId
-	withShow(browserlessWsEndpointBase, {
-		resource: ['positions'],
-		operation: ['getMany'],
-	}),
-	withShow(debugModeBase, {
-		resource: ['positions'],
-		operation: ['getMany'],
-	}),
 ];
