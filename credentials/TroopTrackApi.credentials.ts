@@ -5,7 +5,7 @@ export class TroopTrackApi implements ICredentialType {
 	displayName = 'TroopTrack API';
 	icon: Icon = { light: 'file:trooptrack.png', dark: 'file:trooptrack.png' };
 
-	documentationUrl = 'https://trooptrack.com';
+	documentationUrl = 'httpsTrooptrackCom';
 
 	properties: INodeProperties[] = [
 		{

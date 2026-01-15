@@ -7,7 +7,7 @@ export const genericOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['generic'] } },
-		options: [{ name: 'Request', value: 'request' }],
+		options: [{ name: 'Request', value: 'request', action: 'Request a generic',}],
 		default: 'request',
 	},
 ];
@@ -34,7 +34,7 @@ export const genericFields: INodeProperties[] = [
 		required: true,
 		displayOptions: { show: { resource: ['generic'], operation: ['request'] } },
 		default: '/v1/users',
-		description: 'Path starting with /v1. Example: /v1/events or /v1/users/123',
+		description: 'Path starting with /v1. Example: /v1/events or /v1/users/123.',
 	},
 	{
 		displayName: 'Query Params',

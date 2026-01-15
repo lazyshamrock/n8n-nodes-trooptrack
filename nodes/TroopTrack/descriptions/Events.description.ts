@@ -8,10 +8,10 @@ export const eventsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['events'] } },
 		options: [
-			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events' },
-			{ name: 'Get By Id', value: 'getById', description: 'GET /v1/events/{id}' },
-			{ name: 'Create', value: 'create', description: 'POST /v1/events' },
-			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types' },
+			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Get Many an events',},
+			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Get By Id an events',},
+			{ name: 'Create', value: 'create', description: 'POST /v1/events', action: 'Create an events',},
+			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Get Types an events',},
 		],
 		default: 'getMany',
 	},
@@ -39,7 +39,7 @@ export const eventsFields: INodeProperties[] = [
 		description: 'ISO date (YYYY-MM-DD)',
 	},
 	{
-		displayName: 'Event Id',
+		displayName: 'Event ID',
 		name: 'eventId',
 		type: 'number',
 		required: true,

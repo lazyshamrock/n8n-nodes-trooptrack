@@ -12,11 +12,13 @@ export const photoAlbumsOperations: INodeProperties[] = [
 				name: 'Get Many',
 				value: 'getMany',
 				description: 'GET /v1/photo_albums',
+				action: 'Get many a photo albums',
 			},
 			{
-				name: 'Get By Id',
+				name: 'Get By ID',
 				value: 'getById',
-				description: 'GET /v1/photo_albums/{id}',
+				description: 'GET /v1/photo_albums/{ID}',
+				action: 'Get by id a photo albums',
 			},
 		],
 		default: 'getMany',
@@ -25,7 +27,7 @@ export const photoAlbumsOperations: INodeProperties[] = [
 
 export const photoAlbumsFields: INodeProperties[] = [
 	{
-		displayName: 'Photo Album Id',
+		displayName: 'Photo Album ID',
 		name: 'photoAlbumId',
 		type: 'number',
 		required: true,
