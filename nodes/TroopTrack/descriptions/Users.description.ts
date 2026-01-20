@@ -30,6 +30,7 @@ export const usersOperations: INodeProperties[] = [
 			{ name: 'Get BSA ID', value: 'getBsaId', description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get BSA ID 🌐' },
 			{ name: 'Get Date Joined', value: 'getDateJoined', description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})]', action: 'Get date joined 🌐' },
 			{ name: 'Get Allergies', value: 'getAllergies', description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})]', action: 'Get allergies 🌐', },
+			{ name: 'Start Merit Badge', value: 'startMeritBadge', description: 'Start a merit badge for each user_id/achievement_id pair (web UI)', action: 'Start Merit Badge 🌐' },
 			{ name: 'Set Permissions', value: 'setPermissions', description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', action: 'Set TroopTrack Permission 🌐' },
 			{ name: 'Assign Scouts to Positions', value: 'createAssignments', description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)', action: 'Assign scouts to position 🌐' },
 			{ name: 'Add a User', value: 'update', description: 'POST /v1/users/{ID}', action: 'Add a User',},
@@ -141,10 +142,29 @@ export const usersFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['users'],
-				operation: ['setPermissions'],
+				operation: ['setPermissions', 'startMeritBadge'],
 			},
 		},
 		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+
+	{
+		displayName: 'Achievement ID Field',
+		name: 'achievement_id',
+		type: 'string',
+		required: true,
+		default: 'achievement_id',
+		placeholder: 'achievement_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['startMeritBadge'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 
 	{
@@ -295,6 +315,39 @@ export const usersFields: INodeProperties[] = [
 	},
 
 	{
+		displayName: 'Delay (Ms)',
+		name: 'delayMs',
+		type: 'number',
+		default: 300,
+		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['startMeritBadge'],
+			},
+		},
+	},
+	{
+		displayName: 'Batch Size',
+		name: 'batchSize',
+		type: 'number',
+		default: 0,
+		description: 'Optional. Process items in chunks. 0 means no batching. Useful to reduce long-running sessions.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['startMeritBadge'],
+			},
+		},
+	},
+
+	{
 		displayName: 'Update Body',
 		name: 'updateBody',
 		type: 'json',
@@ -324,6 +377,10 @@ export const usersFields: INodeProperties[] = [
 	withShow(browserlessWsEndpointBase, {
 		resource: ['users'],
 		operation: ['setPermissions', 'createAssignments'],
+	}),
+	withShow(browserlessWsEndpointBase, {
+		resource: ['users'],
+		operation: ['startMeritBadge'],
 	}),
 
 	withShow(debugModeBase, {

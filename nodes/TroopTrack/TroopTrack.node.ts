@@ -50,11 +50,12 @@ export class TroopTrack implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Users', value: 'users' },
 					{ name: 'Achievements', value: 'achievementsCategory' },
-					{ name: 'Events', value: 'events' },
-					{ name: 'Communication', value: 'mailingLists' },
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
+					{ name: 'Users', value: 'users' },
+					{ name: 'Events', value: 'events' },
+					{ name: 'Communicate', value: 'mailingLists' },
+					{ name: 'Generic', value: 'generic' },
 				],
 				default: 'generalTroopTrack',
 			},
@@ -65,6 +66,7 @@ export class TroopTrack implements INodeType {
 			...eventsOperations,
 			...mailingListsOperations,
 			...usersOperations,
+			...genericOperations,
 
 			// Fields
 			...achievementsCategoryFields,
@@ -72,7 +74,18 @@ export class TroopTrack implements INodeType {
 			...eventsFields,
 			...mailingListsFields,
 			...usersFields,
+			...genericFields,
 		],
+		codex: {
+			categories: [
+				'Users',
+				'Achievements',
+				'Events',
+				'Communicate',
+				'Generic'
+				// Add other categories in the exact order you want
+			],
+		},
 	};
 
 	methods = {

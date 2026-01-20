@@ -1,9 +1,87 @@
 import type { ResourceHandler } from './types';
 import { troopTrackRequest } from '../GenericFunctions';
+import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
+import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge';
 
 export const achievementsResource: ResourceHandler = {
 	resource: 'achievements',
 	async execute(ctx, _items, itemIndex, operation) {
+		if (operation === 'startMeritBadge') {
+			const items = _items;
+			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
+			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
+
+			const userIdFieldName = ctx.getNodeParameter('user_id', 0) as string;
+			const achievementIdFieldName = ctx.getNodeParameter('achievement_id', 0) as string;
+
+			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+				throw new Error('Browserless WebSocket endpoint is required (including token).');
+			}
+
+			const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);
+
+			try {
+				const credentials = (await ctx.getCredentials('troopTrackApi')) as Record<string, any>;
+				const auth = {
+					tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+					tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+					tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+				};
+
+				if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+					throw new Error('Missing TroopTrack credentials fields required for web login');
+				}
+
+				const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+				const result = await session.withSession(async (page) => {
+					if (delayMs > 0) {
+						await new Promise((resolve) => setTimeout(resolve, delayMs));
+					}
+
+					return await startTroopTrackMeritBadges(
+						page,
+						auth.tt_sub_domain,
+						inputRows,
+						{
+							user_id: userIdFieldName,
+							achievement_id: achievementIdFieldName,
+						},
+						{
+							delayMs,
+							batchSize,
+						},
+					);
+				});
+
+				const resultByIndex = new Map<number, { mb_added: boolean; errors: string[] }>();
+				for (const entry of result ?? []) {
+					if (typeof entry?.index === 'number') {
+						resultByIndex.set(entry.index, {
+							mb_added: Boolean(entry?.mb_added),
+							errors: Array.isArray(entry?.errors) ? entry.errors : ['Unknown error'],
+						});
+					}
+				}
+
+				return inputRows.map((row, idx) => {
+					const entry = resultByIndex.get(idx);
+					return {
+						...row,
+						mb_added: entry ? entry.mb_added : false,
+						errors: entry ? entry.errors : ['No result returned for item'],
+					};
+				});
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e);
+				return inputRows.map((row) => ({
+					...row,
+					mb_added: false,
+					errors: [msg],
+				}));
+			}
+		}
+
 		if (operation === 'getMany') {
 			const awardTypeId = ctx.getNodeParameter('awardTypeId', 0) as number;
 

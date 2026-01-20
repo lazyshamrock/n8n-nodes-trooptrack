@@ -5,12 +5,16 @@ import { userAchievementsResource } from './userAchievements';
 
 export const achievementsCategoryResource: ResourceHandler = {
 	resource: 'achievementsCategory',
+	runOnceOperations: new Set(['startMeritBadge']),
 	async execute(ctx, items, itemIndex, operation) {
 		if (operation === 'achievementsGetMany') {
 			return await achievementsResource.execute(ctx, items, itemIndex, 'getMany');
 		}
 		if (operation === 'achievementsGetById') {
 			return await achievementsResource.execute(ctx, items, itemIndex, 'getById');
+		}
+		if (operation === 'startMeritBadge') {
+			return await achievementsResource.execute(ctx, items, itemIndex, 'startMeritBadge');
 		}
 		if (operation === 'awardTypesGetMany') {
 			return await awardTypesResource.execute(ctx, items, itemIndex, 'getMany');

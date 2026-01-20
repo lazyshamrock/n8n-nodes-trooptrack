@@ -21,6 +21,12 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 				action: 'Get a TroopTrack achievement by id',
 			},
 			{
+				name: 'Merit Badges: Start',
+				value: 'startMeritBadge',
+				description: 'Start a merit badge for each user_id/achievement_id pair (web UI)',
+				action: 'Start Merit Badge 🌐',
+			},
+			{
 				name: 'Award Types: Get Many',
 				value: 'awardTypesGetMany',
 				description: 'GET /v1/award_types',
@@ -138,6 +144,89 @@ export const achievementsCategoryFields: INodeProperties[] = [
 			show: {
 				resource: ['achievementsCategory'],
 				operation: ['userAchievementsGetMany', 'userAchievementsGetById'],
+			},
+		},
+	},
+	{
+		displayName: 'User ID Field',
+		name: 'user_id',
+		type: 'string',
+		required: true,
+		default: 'user_id',
+		placeholder: 'user_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['startMeritBadge'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Achievement ID Field',
+		name: 'achievement_id',
+		type: 'string',
+		required: true,
+		default: 'achievement_id',
+		placeholder: 'achievement_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['startMeritBadge'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Browserless WebSocket Endpoint',
+		name: 'browserlessWsEndpoint',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
+		description: 'Full Browserless WebSocket endpoint including token query parameter',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['startMeritBadge'],
+			},
+		},
+	},
+	{
+		displayName: 'Delay (Ms)',
+		name: 'delayMs',
+		type: 'number',
+		default: 300,
+		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['startMeritBadge'],
+			},
+		},
+	},
+	{
+		displayName: 'Batch Size',
+		name: 'batchSize',
+		type: 'number',
+		default: 0,
+		description: 'Optional. Process items in chunks. 0 means no batching. Useful to reduce long-running sessions.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['startMeritBadge'],
 			},
 		},
 	},
