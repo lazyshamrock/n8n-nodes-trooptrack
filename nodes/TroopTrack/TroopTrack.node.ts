@@ -50,10 +50,10 @@ export class TroopTrack implements INodeType {
 				type: 'options',
 				noDataExpression: true,
 				options: [
-					{ name: 'Achievements', value: 'achievementsCategory' },
+					{ name: 'Achievement', value: 'achievementsCategory' },
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
-					{ name: 'Users', value: 'users' },
-					{ name: 'Events', value: 'events' },
+					{ name: 'User', value: 'users' },
+					{ name: 'Event', value: 'events' },
 					{ name: 'Communicate', value: 'mailingLists' },
 					{ name: 'Generic', value: 'generic' },
 				],

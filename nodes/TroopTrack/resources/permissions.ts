@@ -4,6 +4,43 @@ import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
 import { scrapePermissions } from '../puppeteer/scrapers/permissions';
 import { setTroopTrackUserPermissions } from '../puppeteer/scrapers/permissionsSet';
 
+function safeStringify(value: unknown, maxLen = 800): string {
+	try {
+		const seen = new WeakSet<object>();
+		const json = JSON.stringify(
+			value,
+			(_key, val) => {
+				if (typeof val === 'object' && val !== null) {
+					if (seen.has(val as object)) return '[Circular]';
+					seen.add(val as object);
+				}
+				if (typeof val === 'bigint') return val.toString();
+				return val;
+			},
+			0,
+		);
+		return json.length > maxLen ? json.slice(0, maxLen) : json;
+	} catch (e: any) {
+		const msg = e?.message ? String(e.message) : 'unknown stringify error';
+		const str = String(value);
+		return `${str.slice(0, maxLen)} (safeStringify fallback: ${msg})`;
+	}
+}
+
+function extractUsersFromTokenResponse(tokenResp: any): any[] {
+	if (Array.isArray(tokenResp)) return tokenResp;
+	if (!tokenResp || typeof tokenResp !== 'object') return [];
+
+	if (Array.isArray((tokenResp as any).users)) return (tokenResp as any).users;
+	if (Array.isArray((tokenResp as any).user)) return (tokenResp as any).user;
+
+	if (Array.isArray((tokenResp as any).data?.users)) return (tokenResp as any).data.users;
+	if (Array.isArray((tokenResp as any).data?.user)) return (tokenResp as any).data.user;
+
+	if (typeof (tokenResp as any).user === 'object') return [(tokenResp as any).user];
+	return [];
+}
+
 export const permissionsResource: ResourceHandler = {
 	resource: 'permissions',
 	runOnceOperations: new Set(['getMany', 'setPermissions']),
@@ -127,17 +164,25 @@ export const permissionsResource: ResourceHandler = {
 			// 2) Call /v1/tokens and confirm required privileges
 			const tokenResp: any = await troopTrackRequest(ctx, 'GET', '/v1/tokens');
 
-			const usersArr: any[] = Array.isArray(tokenResp?.users) ? tokenResp.users : [];
-			const me = usersArr[0];
+			const usersArr: any[] = extractUsersFromTokenResponse(tokenResp);
+			const me = usersArr[0] ?? null;
 
-			const my_user_id = Number(me?.user_id);
-			const privileges: string[] = Array.isArray(me?.privileges) ? me.privileges : [];
+			const my_user_id = Number(me?.user_id ?? me?.id ?? me?.userId);
+			const privileges: string[] = Array.isArray(me?.privileges)
+				? me.privileges
+				: Array.isArray(me?.permissions)
+					? me.permissions
+					: [];
 
 			const hasEditUserProfile = privileges.includes('Edit user profile');
 			const hasManagePrivileges = privileges.includes('Manage privileges');
 
 			if (!Number.isFinite(my_user_id)) {
-				throw new Error('Unable to determine your user_id from /v1/tokens.');
+				const preview =
+					typeof tokenResp === 'string' ? tokenResp.slice(0, 800) : safeStringify(tokenResp, 800);
+				throw new Error(
+					`Unable to determine your user_id from /v1/tokens. Response preview: ${preview}`,
+				);
 			}
 
 			if (!hasEditUserProfile || !hasManagePrivileges) {

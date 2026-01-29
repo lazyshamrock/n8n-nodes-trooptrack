@@ -12,19 +12,19 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 				name: 'Achievements: Get Many',
 				value: 'achievementsGetMany',
 				description: 'GET /v1/achievements',
-				action: 'Get all available TroopTrack achievements',
+				action: 'Get all available troop track achievements',
 			},
 			{
 				name: 'Achievements: Get By ID',
 				value: 'achievementsGetById',
 				description: 'GET /v1/achievements/{ID} (requires award_type_id)',
-				action: 'Get a TroopTrack achievement by id',
+				action: 'Get a troop track achievement by id',
 			},
 			{
 				name: 'Merit Badges: Start',
 				value: 'startMeritBadge',
 				description: 'Start a merit badge for each user_id/achievement_id pair (web UI)',
-				action: 'Start Merit Badge 🌐',
+				action: 'Start merit badge',
 			},
 			{
 				name: 'Award Types: Get Many',

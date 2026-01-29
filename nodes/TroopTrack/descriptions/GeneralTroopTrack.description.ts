@@ -37,7 +37,7 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 				name: 'Permissions: Get Many',
 				value: 'permissionsGetMany',
 				description: 'Scrape TroopTrack permission list (Privileges tab) from the web UI',
-				action: 'Get TroopTrack permissions 🌐',
+				action: 'Get troop track permissions',
 			},
 			{
 				name: 'Positions: Get Many',
@@ -46,10 +46,10 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 				action: 'Get all positions 🌐',
 			},
 			{
-				name: 'Get all Patrols: Get Many',
+				name: 'Get All Patrols: Get Many',
 				value: 'patrolsGetMany',
 				description: 'Get All Patrols in the Unit',
-				action: 'Get all Patrols in the unit',
+				action: 'Get all patrols in the unit',
 			},
 		],
 		default: 'tokensGetPrivileges',

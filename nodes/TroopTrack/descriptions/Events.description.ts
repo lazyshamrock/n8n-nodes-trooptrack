@@ -8,10 +8,10 @@ export const eventsOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['events'] } },
 		options: [
-			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Get Many an events',},
-			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Get By Id an events',},
+			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Get many an events',},
+			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Get by id an events',},
 			{ name: 'Create', value: 'create', description: 'POST /v1/events', action: 'Create an events',},
-			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Get Types an events',},
+			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Get types an events',},
 		],
 		default: 'getMany',
 	},
