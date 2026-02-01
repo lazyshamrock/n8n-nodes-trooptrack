@@ -31,4 +31,13 @@ export const mailingListsOperations: INodeProperties[] = [
 	},
 ];
 
-export const mailingListsFields: INodeProperties[] = [];
+export const mailingListsFields: INodeProperties[] = [
+	{
+		displayName: 'Photo Album ID',
+		name: 'photoAlbumId',
+		type: 'number',
+		required: true,
+		displayOptions: { show: { resource: ['mailingLists'], operation: ['getById'] } },
+		default: 0,
+	},
+];

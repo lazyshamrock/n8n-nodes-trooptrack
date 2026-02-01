@@ -86,6 +86,19 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
+	{
+		displayName: 'Exclude user IDs',
+		name: 'excludeUserIds',
+		type: 'string',
+		default: '',
+		description: 'Comma-separated list (or JSON array) of user IDs to exclude from the output.',
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getMany'],
+			},
+		},
+	},
 	{ 	displayName: 'Additional Data to Include',
 		name: 'dataToInclude',
 		type: 'multiOptions',
@@ -109,6 +122,21 @@ export const usersFields: INodeProperties[] = [
 			{ name: 'Date Joined', value: 'dateJoined' },
 			{ name: 'Allergies', value: 'allergies' },
 		],
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getMany'],
+				returnType: ['extended'],
+			},
+		},
+	},
+	{
+		displayName: 'Normalize for Database Load',
+		name: 'normalizeForDatabaseLoad',
+		type: 'boolean',
+		default: false,
+		description:
+			'When enabled, the node returns a single item containing database-ready rowset arrays instead of one item per user.',
 		displayOptions: {
 			show: {
 				resource: ['users'],

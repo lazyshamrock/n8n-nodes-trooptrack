@@ -10,6 +10,168 @@ import { permissionsResource } from './permissions';
 import { positionsResource } from './positions';
 import { achievementsResource } from './achievements';
 
+const nullIfEmptyString = (value: any) => {
+	if (typeof value === 'string' && value.trim() === '') return null;
+	return value;
+};
+
+const toNumberOrNull = (value: any) => {
+	if (value == null) return null;
+	if (typeof value === 'string' && value.trim() === '') return null;
+	const num = typeof value === 'number' ? value : Number(value);
+	return Number.isFinite(num) ? num : null;
+};
+
+const toBoolOrNull = (value: any) => {
+	if (value == null) return null;
+	if (typeof value === 'string' && value.trim() === '') return null;
+	if (typeof value === 'boolean') return value;
+	if (typeof value === 'number') return value === 1 ? true : value === 0 ? false : null;
+	if (typeof value === 'string') {
+		const v = value.trim().toLowerCase();
+		if (v === 'true' || v === '1') return true;
+		if (v === 'false' || v === '0') return false;
+	}
+	return null;
+};
+
+const applySentinelDate = (value: any, sentinelValue: string) => {
+	if (typeof value === 'string' && value.trim() === '') return sentinelValue;
+	return value;
+};
+
+const cleanName = (value: any) => {
+	if (value == null) return null;
+	const s = String(value)
+		.replace(/\s*\([^)]*\)\s*/g, ' ')
+		.replace(/\s+/g, ' ')
+		.trim();
+	return s || null;
+};
+
+const parseExcludeUserIds = (raw: any) => {
+	const text = typeof raw === 'string' ? raw.trim() : '';
+	if (!text) return new Set<number>();
+
+	let values: any[] = [];
+	if (text.startsWith('[')) {
+		try {
+			const parsed = JSON.parse(text);
+			if (!Array.isArray(parsed)) {
+				throw new Error('excludeUserIds JSON must be an array');
+			}
+			values = parsed;
+		} catch (e) {
+			const msg = e instanceof Error ? e.message : String(e);
+			throw new Error(`excludeUserIds parse error: ${msg}. Raw: ${text}`);
+		}
+	} else {
+		values = text.split(',').map((v) => v.trim()).filter((v) => v !== '');
+	}
+
+	const ids = new Set<number>();
+	for (const v of values) {
+		const n = toNumberOrNull(v);
+		if (n != null) ids.add(n);
+	}
+	return ids;
+};
+
+const normalizeExtendedUser = (user: Record<string, any>) => {
+	const out: Record<string, any> = { ...user };
+
+	out.user_id = toNumberOrNull(out.user_id);
+	out.scout = toBoolOrNull(out.scout);
+
+	out.born_on = nullIfEmptyString(out.born_on);
+	out.PartA = nullIfEmptyString(out.PartA);
+	out.PartB = nullIfEmptyString(out.PartB);
+	out.PartC = nullIfEmptyString(out.PartC);
+	out.date_joined = nullIfEmptyString(out.date_joined);
+
+	if ('txtOptOut' in out) {
+		out.txtOptOut = toBoolOrNull(out.txtOptOut);
+	}
+
+	if (Array.isArray(out.patrol_id)) {
+		out.patrol_id = out.patrol_id.map((p: any) => toNumberOrNull(p)).filter((p: any) => p != null);
+	}
+
+	if (Array.isArray(out.households)) {
+		out.households = out.households
+			.map((h: any) => {
+				if (h && typeof h === 'object') {
+					const household_id = toNumberOrNull((h as any).household_id);
+					return household_id == null ? null : { ...h, household_id };
+				}
+				return h;
+			})
+			.filter((h: any) => h != null);
+	}
+
+	if (Array.isArray(out.leadership_positions)) {
+		out.leadership_positions = out.leadership_positions
+			.map((p: any) => {
+				if (!p || typeof p !== 'object') return p;
+				const position_number = toNumberOrNull((p as any).position_number);
+				if (position_number == null) return null;
+				return {
+					...p,
+					position_type_number: toNumberOrNull((p as any).position_type_number),
+					position_number,
+					start_date: applySentinelDate((p as any).start_date, '2000-01-01'),
+					end_date: applySentinelDate((p as any).end_date, '2999-12-31'),
+				};
+			})
+			.filter((p: any) => p != null);
+	}
+
+	if (Array.isArray(out.training)) {
+		out.training = out.training
+			.map((t: any) => {
+				if (!t || typeof t !== 'object') return t;
+				const training_id = toNumberOrNull((t as any).training_id);
+				if (training_id == null) return null;
+				return {
+					...t,
+					training_id,
+					training_number: toNumberOrNull((t as any).training_number),
+					completed_on: applySentinelDate((t as any).completed_on, '2000-01-01'),
+					expires_on: applySentinelDate((t as any).expires_on, '2999-12-31'),
+				};
+			})
+			.filter((t: any) => t != null);
+	}
+
+	if (Array.isArray(out.ranks)) {
+		out.ranks = out.ranks
+			.map((r: any) => {
+				if (!r || typeof r !== 'object') return r;
+				return {
+					...r,
+					name: cleanName((r as any).name),
+					completed_on: nullIfEmptyString((r as any).completed_on),
+				};
+			})
+			.filter((r: any) => r != null);
+	}
+
+	if (Array.isArray(out.merit_badges)) {
+		out.merit_badges = out.merit_badges
+			.map((r: any) => {
+				if (!r || typeof r !== 'object') return r;
+				return {
+					...r,
+					name: cleanName((r as any).name),
+					completed_on: nullIfEmptyString((r as any).completed_on),
+				};
+			})
+			.filter((r: any) => r != null);
+	}
+
+	return out;
+};
+
 export const usersResource: ResourceHandler = {
 	resource: 'users',
 	runOnceOperations: new Set([
@@ -146,6 +308,8 @@ export const usersResource: ResourceHandler = {
 
 		if (operation === 'getMany') {
 			const returnType = ctx.getNodeParameter('returnType', itemIndex, 'api') as string;
+			const excludeUserIdsRaw = ctx.getNodeParameter('excludeUserIds', itemIndex, '') as string;
+			const excludeUserIds = parseExcludeUserIds(excludeUserIdsRaw);
 
 			if (returnType === 'simple') {
 				// Old Get Many (Simple) behavior
@@ -157,13 +321,21 @@ export const usersResource: ResourceHandler = {
 					user_id: u?.user_id,
 					name: u?.name,
 					scout: u?.scout,
-				}));
+				})).filter((u: any) => {
+					const id = toNumberOrNull(u?.user_id);
+					return id == null || !excludeUserIds.has(id);
+				});
 			}
 
 			if (returnType === 'extended') {
 				const dataToInclude = ctx.getNodeParameter('dataToInclude', itemIndex, []) as string[];
 				const debugMode = ctx.getNodeParameter('debugMode', itemIndex, false) as boolean;
 				const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', itemIndex, '') as string;
+				const normalizeForDatabaseLoad = ctx.getNodeParameter(
+					'normalizeForDatabaseLoad',
+					itemIndex,
+					false,
+				) as boolean;
 
 				// 1) Seed via the same source as Simple: /v1/events/types -> wrapper.users
 				const seedRaw = await troopTrackRequest(ctx, 'GET', '/v1/events/types', {}, {});
@@ -364,7 +536,269 @@ export const usersResource: ResourceHandler = {
 					}
 				}
 
-				return enriched;
+				let normalized = enriched.map((u) => normalizeExtendedUser(u));
+
+				if (excludeUserIds.size > 0) {
+					normalized = normalized.filter((u: any) => {
+						const id = toNumberOrNull(u?.user_id);
+						return id == null || !excludeUserIds.has(id);
+					});
+				}
+
+				if (!normalizeForDatabaseLoad) {
+					return normalized;
+				}
+
+				// Build database-ready rowsets (mirrors workflow Code nodes)
+				const members_rows = normalized.map((j: any) =>
+					Object.fromEntries(
+						Object.entries({
+							user_id: j.user_id,
+							first_name: j.first_name,
+							last_name: j.last_name,
+							email: j.email,
+							cell_phone: j.cell_phone,
+							gender: j.gender,
+							scout: j.scout,
+							current_position: j.current_position,
+							current_rank: j.current_rank,
+							born_on: j.born_on,
+							PartA: j.PartA,
+							PartB: j.PartB,
+							PartC: j.PartC,
+							date_joined: j.date_joined,
+							money_account_balance: j.money_account_balance,
+							user_name: j.user_name,
+							txtOptOut: j.txtOptOut,
+							BSA_id: j.BSA_id,
+							allergies: j.allergies,
+						}).filter(([, v]) => v !== undefined),
+					),
+				);
+
+				// Flatten Updates for Member Patrol Upsert
+				const member_patrol_rows: Array<{ user_id: number | null; patrol_id: number }> = [];
+				const seenPatrol = new Set<string>();
+				for (const j of normalized) {
+					const uid = j.user_id as number | null;
+					const plist = Array.isArray(j.patrol_id) ? j.patrol_id : [];
+					for (const p of plist) {
+						const pid = toNumberOrNull(p);
+						if (pid == null) continue;
+						const key = `${uid}::${pid}`;
+						if (seenPatrol.has(key)) continue;
+						seenPatrol.add(key);
+						member_patrol_rows.push({ user_id: uid, patrol_id: pid });
+					}
+				}
+
+				// Flatten Updates for Member Household Upsert
+				const member_household_rows: Array<{ user_id: number | null; household_id: number }> = [];
+				const seenHousehold = new Set<string>();
+				for (const j of normalized) {
+					const uid = j.user_id as number | null;
+					const households = Array.isArray(j.households) ? j.households : [];
+					for (const h of households) {
+						const hid = toNumberOrNull((h as any)?.household_id);
+						if (hid == null) continue;
+						const key = `${uid}::${hid}`;
+						if (seenHousehold.has(key)) continue;
+						seenHousehold.add(key);
+						member_household_rows.push({ user_id: uid, household_id: hid });
+					}
+				}
+
+				// Flatten Updates for Member Leadership Positions Upsert
+				const member_leadership_rows: Array<{
+					user_id: number | null;
+					position_type_number: number | null;
+					position_number: number;
+					start_date: string | null;
+					end_date: string | null;
+				}> = [];
+				const seenLeadership = new Set<string>();
+				for (const j of normalized) {
+					const uid = j.user_id as number | null;
+					const plist = Array.isArray(j.leadership_positions) ? j.leadership_positions : [];
+					for (const p of plist) {
+						const position_type_number = toNumberOrNull((p as any)?.position_type_number);
+						const position_number = toNumberOrNull((p as any)?.position_number);
+						if (position_number == null) continue;
+						const key = `${uid}::${position_number}`;
+						if (seenLeadership.has(key)) continue;
+						seenLeadership.add(key);
+						member_leadership_rows.push({
+							user_id: uid,
+							position_type_number,
+							position_number,
+							start_date: (p as any)?.start_date ?? null,
+							end_date: (p as any)?.end_date ?? null,
+						});
+					}
+				}
+
+				// Flatten Updates for Member Leadership Positions Upsert1 (training)
+				const member_training_rows: Array<{
+					user_id: number | null;
+					training_id: number;
+					training_number: number | null;
+					completed_on: string | null;
+					expires_on: string | null;
+					name: string | null;
+				}> = [];
+				const seenTraining = new Set<string>();
+				let hasTrainingSource = false;
+				for (const j of normalized) {
+					const uid = j.user_id as number | null;
+					const plist = Array.isArray(j.training)
+						? j.training
+						: Array.isArray((j as any).training_trackers)
+							? (j as any).training_trackers
+							: [];
+					if (plist.length > 0) hasTrainingSource = true;
+					for (const p of plist) {
+						if (!p || typeof p !== 'object') continue;
+						const rr = Object.fromEntries(
+							Object.entries({
+								...(p as Record<string, any>),
+								completed_on: applySentinelDate((p as any).completed_on, '2000-01-01'),
+								expires_on: applySentinelDate((p as any).expires_on, '2999-12-31'),
+							}).filter(([, v]) => v !== undefined),
+						);
+						const training_id = toNumberOrNull((rr as any)?.training_id);
+						if (training_id == null) continue;
+						const idPart =
+							(training_id as number | null) ??
+							toNumberOrNull((rr as any)?.training_number) ??
+							(rr as any)?.name ??
+							'';
+						const key = `${uid}::${idPart}`;
+						if (seenTraining.has(key)) continue;
+						seenTraining.add(key);
+						member_training_rows.push({
+							user_id: uid,
+							training_id,
+							training_number: toNumberOrNull((rr as any)?.training_number),
+							completed_on: (rr as any)?.completed_on ?? null,
+							expires_on: (rr as any)?.expires_on ?? null,
+							name: (rr as any)?.name ?? null,
+						});
+					}
+				}
+
+				// Flatten Updates for Member Counseled MB Upsert
+				const member_counseled_mb_rows: Array<{ user_id: number | null; mb_name: string }> = [];
+				const seenCounseled = new Set<string>();
+				if (wants.counseledMeritBadges) {
+					for (const j of normalized) {
+						const uid = j.user_id as number | null;
+						const plist = Array.isArray(j.counseled_MBs) ? j.counseled_MBs : [];
+						for (const p of plist) {
+							const mb_name = typeof p === 'string' ? p : String(p ?? '');
+							if (!mb_name) continue;
+							const key = `${uid}::${mb_name}`;
+							if (seenCounseled.has(key)) continue;
+							seenCounseled.add(key);
+							member_counseled_mb_rows.push({ user_id: uid, mb_name });
+						}
+					}
+				}
+
+				// Create Rank Entries (Scouts only)
+				const member_ranks_rows: Array<Record<string, any>> = [];
+				const seenRanks = new Set<string>();
+				let hasRanksSource = false;
+				for (const j of normalized) {
+					if (j.scout === false) continue;
+					const uid = j.user_id as number | null;
+					const ranks = Array.isArray(j.ranks)
+						? j.ranks
+						: Array.isArray((j as any).rank_trackers)
+							? (j as any).rank_trackers
+							: [];
+					if (ranks.length > 0) hasRanksSource = true;
+					for (const r of ranks) {
+						if (!r || typeof r !== 'object') continue;
+						const cleanedName = cleanName((r as any).name);
+						const rr = Object.fromEntries(
+							Object.entries({
+								...(r as Record<string, any>),
+								name: cleanedName,
+								completed_on: nullIfEmptyString((r as any).completed_on),
+							}).filter(([, v]) => v !== undefined),
+						);
+						const idPart =
+							(rr as any).user_achievement_id ?? (rr as any).achievement_id ?? cleanedName ?? '';
+						const key = `${uid}::${idPart}`;
+						if (seenRanks.has(key)) continue;
+						seenRanks.add(key);
+						member_ranks_rows.push({ user_id: uid, ...rr });
+					}
+				}
+
+				// Create MB Entries (Scouts only)
+				const member_mbs_adv_rows: Array<Record<string, any>> = [];
+				const seenMbs = new Set<string>();
+				let hasMbsSource = false;
+				for (const j of normalized) {
+					if (j.scout === false) continue;
+					const uid = j.user_id as number | null;
+					const badges = Array.isArray(j.merit_badges)
+						? j.merit_badges
+						: Array.isArray((j as any).merit_badge_trackers)
+							? (j as any).merit_badge_trackers
+							: [];
+					if (badges.length > 0) hasMbsSource = true;
+					for (const r of badges) {
+						if (!r || typeof r !== 'object') continue;
+						const cleanedName = cleanName((r as any).name);
+						const rr = Object.fromEntries(
+							Object.entries({
+								...(r as Record<string, any>),
+								name: cleanedName,
+								completed_on: nullIfEmptyString((r as any).completed_on),
+							}).filter(([, v]) => v !== undefined),
+						);
+						const idPart =
+							(rr as any).user_achievement_id ?? (rr as any).achievement_id ?? cleanedName ?? '';
+						const key = `${uid}::${idPart}`;
+						if (seenMbs.has(key)) continue;
+						seenMbs.add(key);
+						member_mbs_adv_rows.push({ user_id: uid, ...rr });
+					}
+				}
+
+				const payload: Record<string, any> = {
+					members_rows,
+					member_household_rows,
+					...(hasTrainingSource ? { member_training_rows } : {}),
+					member_leadership_rows,
+					member_patrol_rows,
+					...(hasRanksSource ? { member_ranks_rows } : {}),
+					...(hasMbsSource ? { member_mbs_adv_rows } : {}),
+				};
+
+				if (wants.counseledMeritBadges) {
+					payload.member_counseled_mb_rows = member_counseled_mb_rows;
+				}
+
+				const DEBUG_DB_NORMALIZE = false;
+				if (DEBUG_DB_NORMALIZE) {
+					const firstRank = member_ranks_rows[0] ?? null;
+					const firstMb = member_mbs_adv_rows[0] ?? null;
+					const firstTraining = member_training_rows[0] ?? null;
+					if (hasRanksSource && member_ranks_rows.length === 0) {
+						console.log('DB normalize warning: ranks source present but no rows', { firstRank });
+					}
+					if (hasMbsSource && member_mbs_adv_rows.length === 0) {
+						console.log('DB normalize warning: merit badges source present but no rows', { firstMb });
+					}
+					if (hasTrainingSource && member_training_rows.length === 0) {
+						console.log('DB normalize warning: training source present but no rows', { firstTraining });
+					}
+				}
+
+				return payload;
 			}
 
 			// returnType === 'api'
@@ -372,7 +806,12 @@ export const usersResource: ResourceHandler = {
 			const wrapper = Array.isArray(raw) ? raw[0] : raw;
 
 			// Adjust this depending on your existing /v1/users response shaping
-			return Array.isArray(wrapper?.users) ? wrapper.users : Array.isArray(wrapper) ? wrapper : [];
+			const users = Array.isArray(wrapper?.users) ? wrapper.users : Array.isArray(wrapper) ? wrapper : [];
+			if (excludeUserIds.size === 0) return users;
+			return users.filter((u: any) => {
+				const id = toNumberOrNull(u?.user_id);
+				return id == null || !excludeUserIds.has(id);
+			});
 		}
 
 		if (operation === 'getById') {
