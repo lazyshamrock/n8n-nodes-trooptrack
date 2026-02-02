@@ -27,6 +27,18 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 				action: 'Start merit badge',
 			},
 			{
+				name: 'Merit Badges: Get Selectable in TroopTrack',
+				value: 'getSelectableMeritBadges',
+				description: 'Scrape the TroopTrack UI to list merit badges available to start (web UI)',
+				action: 'Get selectable merit badges',
+			},
+			{
+				name: 'Merit Badges: Print Blue Cards',
+				value: 'printMeritBadgeBlueCards',
+				description: 'Print and sign merit badge blue cards (web UI)',
+				action: 'Print merit badge blue cards',
+			},
+			{
 				name: 'Award Types: Get Many',
 				value: 'awardTypesGetMany',
 				description: 'GET /v1/award_types',
@@ -184,6 +196,90 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		description: 'Name of the input field containing the target TroopTrack achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 	{
+		displayName: 'User ID Field',
+		name: 'userIdField',
+		type: 'string',
+		required: true,
+		default: 'user_id',
+		description: 'Field on each input item that contains the TroopTrack user_id',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Achievement ID Field',
+		name: 'achievementIdField',
+		type: 'string',
+		required: true,
+		default: 'achievement_id',
+		description: 'Field on each input item that contains the TroopTrack achievement_id',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Counselor ID Field',
+		name: 'counselorIdField',
+		type: 'string',
+		required: false,
+		default: 'counselor_id',
+		description: 'Optional field containing the TroopTrack counselor_id',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Comments Field',
+		name: 'commentsField',
+		type: 'string',
+		required: false,
+		default: 'blue_card_remarks',
+		description: 'Optional field containing blue card remarks text',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Signature Binary Field',
+		name: 'signatureBinaryField',
+		type: 'string',
+		required: false,
+		default: 'signature',
+		description: 'Binary field containing the signature image. If empty or missing, signing is skipped.',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Demo Scout ID',
+		name: 'demoScoutId',
+		type: 'number',
+		required: true,
+		default: 0,
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['getSelectableMeritBadges'],
+			},
+		},
+		description: 'TroopTrack user ID to use when opening the Start Merit Badge dialog',
+	},
+	{
 		displayName: 'Browserless WebSocket Endpoint',
 		name: 'browserlessWsEndpoint',
 		type: 'string',
@@ -194,7 +290,21 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['achievementsCategory'],
-				operation: ['startMeritBadge'],
+				operation: ['startMeritBadge', 'getSelectableMeritBadges', 'printMeritBadgeBlueCards'],
+			},
+		},
+	},
+	{
+		displayName: 'Debug Mode',
+		name: 'debugMode',
+		type: 'boolean',
+		default: false,
+		description:
+			'When enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['getSelectableMeritBadges', 'printMeritBadgeBlueCards'],
 			},
 		},
 	},
@@ -210,7 +320,7 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['achievementsCategory'],
-				operation: ['startMeritBadge'],
+				operation: ['startMeritBadge', 'getSelectableMeritBadges', 'printMeritBadgeBlueCards'],
 			},
 		},
 	},
@@ -226,7 +336,7 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['achievementsCategory'],
-				operation: ['startMeritBadge'],
+				operation: ['startMeritBadge', 'getSelectableMeritBadges', 'printMeritBadgeBlueCards'],
 			},
 		},
 	},

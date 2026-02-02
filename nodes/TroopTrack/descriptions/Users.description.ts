@@ -30,7 +30,7 @@ export const usersOperations: INodeProperties[] = [
 			{ name: 'Get BSA ID', value: 'getBsaId', description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get BSA ID 🌐' },
 			{ name: 'Get Date Joined', value: 'getDateJoined', description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', action: 'Get date joined 🌐' },
 			{ name: 'Get Allergies', value: 'getAllergies', description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', action: 'Get allergies 🌐', },
-			{ name: 'Start Merit Badge', value: 'startMeritBadge', description: 'Start a merit badge for each user_id/achievement_id pair (web UI)', action: 'Start merit badge' },
+			{ name: 'Merit Badge: Start', value: 'startMeritBadge', description: 'Start a merit badge for each user_id/achievement_id pair (web UI)', action: 'Start merit badge' },
 			{ name: 'Set Permissions', value: 'setPermissions', description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', action: 'Set troop track permission' },
 			{ name: 'Assign Scouts to Positions', value: 'createAssignments', description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)', action: 'Assign scouts to position 🌐' },
 			{ name: 'Add a User', value: 'update', description: 'POST /v1/users/{ID}', action: 'Add a user',},

@@ -44,20 +44,21 @@
     ]
   },
   "dependencies": {
+    "pdf-lib": "^1.17.1",
     "puppeteer": "^24.35.0",
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-stealth": "^2.11.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-n8n-nodes-base": "^1.16.0",
     "prettier": "^3.2.5",
     "rimraf": "^6.0.1",
-    "typescript": "^5.4.0",
-    "@typescript-eslint/parser": "^6.21.0",
-    "@typescript-eslint/eslint-plugin": "^6.21.0"
+    "typescript": "^5.4.0"
   },
   "peerDependencies": {
     "n8n-workflow": "*"

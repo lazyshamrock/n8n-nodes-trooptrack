@@ -184,12 +184,27 @@ export class TroopTrack implements INodeType {
 			]);
 			const isByIdOperation = op.includes('getbyid') || op.includes('byid') || op.endsWith('byid') || op.endsWith('byid ');
 
+			const isN8nItem = (val: any): boolean =>
+				val != null && typeof val === 'object' && ('json' in val || 'binary' in val);
+
+			if (Array.isArray(responseData)) {
+				const looksLikeItems = responseData.every((el) => isN8nItem(el));
+				if (looksLikeItems) {
+					for (const el of responseData as any[]) {
+						returnData.push(el);
+					}
+					continue;
+				}
+			}
+
 			// Only split if responseData is an array and it is not a by-id style op.
 			const shouldSplitIntoItems = Array.isArray(responseData) && !neverSplitOps.has(op) && !isByIdOperation;
 			if (shouldSplitIntoItems) {
 				for (const el of responseData as any[]) {
 					returnData.push({ json: el });
 				}
+			} else if (isN8nItem(responseData)) {
+				returnData.push(responseData);
 			} else {
 				returnData.push({ json: responseData });
 			}
