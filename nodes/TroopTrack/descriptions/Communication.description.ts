@@ -9,19 +9,19 @@ export const mailingListsOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['mailingLists'] } },
 		options: [
 			{
-				name: 'Get All Mailing Lists',
+				name: 'Communication: Get All Mailing Lists',
 				value: 'getMany_mailing',
 				description: 'GET /v1/mailing_lists',
 				action: 'Get all mailing lists',
 			},
 			{
-				name: 'Get All Unit Photo Albums',
+				name: 'Communication: Get All Photo Albums',
 				value: 'getMany_albums',
 				description: 'GET /v1/photo_albums',
 				action: 'Get all unit photo albums',
 			},
 			{
-				name: 'Get Photo Album by ID',
+				name: 'Communication: Get Photo Album by ID',
 				value: 'getById',
 				description: 'GET /v1/photo_albums/{ID}',
 				action: 'Get photo album by id',

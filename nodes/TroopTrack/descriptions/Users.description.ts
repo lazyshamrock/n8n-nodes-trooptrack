@@ -1,3 +1,4 @@
+/* eslint-disable n8n-nodes-base/node-param-description-boolean-without-whether */
 import type { INodeProperties } from 'n8n-workflow';
 
 /**
@@ -21,19 +22,54 @@ export const usersOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['users'] } },
 		options: [
-			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/users', action: 'Get all troop track users in unit api or' },
-			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/users/{ID}', action: 'Get a troop track user by id' },
-			{ name: 'Get TroopTrack Usernames', value: 'getUsernames', description: 'Get the TroopTrack username associated with a specific user_id. [Scrapes data from the web UI (/manage/users)].', action: 'Get troop track usernames' },
-			{ name: 'Get Health Form Dates', value: 'getHealthFormDates', description: 'Get Health Form dates (PartA, PartB, PartC) for users keyed by user_id. [Scrapes data from the web UI (/manage/medical_book)].', action: 'Get health form dates 🌐' },
-			{ name: 'Get Text Message Opt Out', value: 'getTxtOptOut', description: 'Get text message opt-out status (txtOptOut) for users keyed by user_id. [Scrapes data from the web UI (/communicate/text_message_settings)].', action: 'Get text message opt out status 🌐'},
-			{ name: 'Get Counseled Merit Badges', value: 'getCounseledMeritBadges', description: 'Get counseled merit badges (counseled_MBs) for users keyed by user_id. [Scrapes data from the web UI (/manage/counseled_merit_badges)].', action: 'Get counseled merit badges 🌐' },
-			{ name: 'Get BSA ID', value: 'getBsaId', description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{id})]', action: 'Get BSA ID 🌐' },
-			{ name: 'Get Date Joined', value: 'getDateJoined', description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', action: 'Get date joined 🌐' },
-			{ name: 'Get Allergies', value: 'getAllergies', description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', action: 'Get allergies 🌐', },
-			{ name: 'Merit Badge: Start', value: 'startMeritBadge', description: 'Start a merit badge for each user_id/achievement_id pair (web UI)', action: 'Start merit badge' },
-			{ name: 'Set Permissions', value: 'setPermissions', description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', action: 'Set troop track permission' },
-			{ name: 'Assign Scouts to Positions', value: 'createAssignments', description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)', action: 'Assign scouts to position 🌐' },
-			{ name: 'Add a User', value: 'update', description: 'POST /v1/users/{ID}', action: 'Add a user',},
+			{ name: 'Add a User', 
+				value: 'update', 
+				description: 'POST /v1/users/{ID}', 
+				action: 'Users: Add a user',},
+			{ name: 'Assign Scouts to Positions', 
+				value: 'createAssignments', 
+				description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)', 
+				action: 'Users: Assign Scouts to Position 🌐' },
+			{ name: 'Get Allergies', 
+				value: 'getAllergies', 
+				description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].',
+				action: 'Users: Get allergies 🌐', },
+			{ name: 'Get BSA ID', 
+				value: 'getBsaId', 
+				description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', 
+				action: 'Users: Get BSA ID 🌐' },
+			{ name: 'Get By ID', 
+				value: 'getById', 
+				description: 'GET /v1/users/{ID}', 
+				action: 'Users: Get User by ID' },
+			{ name: 'Get Counseled Merit Badges', 
+				value: 'getCounseledMeritBadges', 
+				description: 'Get counseled merit badges (counseled_MBs) for users keyed by user_id. [Scrapes data from the web UI (/manage/counseled_merit_badges)].', 
+				action: 'Users: Get counseled merit badges 🌐' },
+			{ name: 'Get Date Joined', 
+				value: 'getDateJoined', 
+				description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', 
+				action: 'Users: Get date joined 🌐' },
+			{ name: 'Get Health Form Dates', 
+				value: 'getHealthFormDates', 
+				description: 'Get Health Form dates (PartA, PartB, PartC) for users keyed by user_id. [Scrapes data from the web UI (/manage/medical_book)].', 
+				action: 'Users: Get health form dates 🌐' },
+			{ name: 'Get Many', 
+				value: 'getMany', 
+				description: 'GET /v1/users', 
+				action: 'Users: Get Many (API or 🌐)' },
+			{ name: 'Get Text Message Opt Out', 
+				value: 'getTxtOptOut', 
+				description: 'Get text message opt-out status (txtOptOut) for users keyed by user_id. [Scrapes data from the web UI (/communicate/text_message_settings)].', 
+				action: 'Users: Get text message opt out status 🌐'},
+			{ name: 'Get TroopTrack Usernames', 
+				value: 'getUsernames', 
+				description: 'Get the TroopTrack username associated with a specific user_id. [Scrapes data from the web UI (/manage/users)].', 
+				action: 'Users: Get TroopTrack Usernames' },
+			{ name: 'Set Permissions', 
+				value: 'setPermissions', 
+				description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', 
+				action: 'Users: Set TroopTrack Permission' },
 		],
 		default: 'getMany',
 	},
@@ -56,8 +92,7 @@ const debugModeBase: INodeProperties = {
 	name: 'debugMode',
 	type: 'boolean',
 	default: false,
-	description:
-		'When enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
+	description: 'If enabled, the node will throw errors and include debug details to help troubleshoot Puppeteer',
 };
 
 export const usersFields: INodeProperties[] = [
@@ -91,7 +126,7 @@ export const usersFields: INodeProperties[] = [
 		name: 'excludeUserIds',
 		type: 'string',
 		default: '',
-		description: 'Comma-separated list (or JSON array) of user IDs to exclude from the output.',
+		description: 'Comma-separated list (or JSON array) of user IDs to exclude from the output',
 		displayOptions: {
 			show: {
 				resource: ['users'],
@@ -114,13 +149,13 @@ export const usersFields: INodeProperties[] = [
 			'allergies',
 		],
 		options: [
+			{ name: 'Allergies', value: 'allergies' },
+			{ name: 'BSA ID', value: 'bsaId' },
 			{ name: 'Counseled Merit Badges', value: 'counseledMeritBadges' },
-			{ name: 'TroopTrack Username', value: 'troopTrackUsername' },
+			{ name: 'Date Joined', value: 'dateJoined' },
 			{ name: 'Health Form Dates', value: 'healthFormDates' },
 			{ name: 'Text Message Opt Out', value: 'textMessageOptOut' },
-			{ name: 'BSA ID', value: 'bsaId' },
-			{ name: 'Date Joined', value: 'dateJoined' },
-			{ name: 'Allergies', value: 'allergies' },
+			{ name: 'TroopTrack Username', value: 'troopTrackUsername' },
 		],
 		displayOptions: {
 			show: {
@@ -135,8 +170,7 @@ export const usersFields: INodeProperties[] = [
 		name: 'normalizeForDatabaseLoad',
 		type: 'boolean',
 		default: false,
-		description:
-			'When enabled, the node returns a single item containing database-ready rowset arrays instead of one item per user.',
+		description: 'If enabled, The node returns a single item containing database-ready rowset arrays instead of one item per user',
 		displayOptions: {
 			show: {
 				resource: ['users'],
@@ -170,29 +204,10 @@ export const usersFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['users'],
-				operation: ['setPermissions', 'startMeritBadge'],
+				operation: ['setPermissions'],
 			},
 		},
 		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
-	},
-
-	{
-		displayName: 'Achievement ID Field',
-		name: 'achievement_id',
-		type: 'string',
-		required: true,
-		default: 'achievement_id',
-		placeholder: 'achievement_id',
-		typeOptions: {
-			requiresDataPath: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['startMeritBadge'],
-			},
-		},
-		description: 'Name of the input field containing the target TroopTrack achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 
 	{
@@ -343,39 +358,6 @@ export const usersFields: INodeProperties[] = [
 	},
 
 	{
-		displayName: 'Delay (Ms)',
-		name: 'delayMs',
-		type: 'number',
-		default: 300,
-		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['startMeritBadge'],
-			},
-		},
-	},
-	{
-		displayName: 'Batch Size',
-		name: 'batchSize',
-		type: 'number',
-		default: 0,
-		description: 'Optional. Process items in chunks. 0 means no batching. Useful to reduce long-running sessions.',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['startMeritBadge'],
-			},
-		},
-	},
-
-	{
 		displayName: 'Update Body',
 		name: 'updateBody',
 		type: 'json',
@@ -405,10 +387,6 @@ export const usersFields: INodeProperties[] = [
 	withShow(browserlessWsEndpointBase, {
 		resource: ['users'],
 		operation: ['setPermissions', 'createAssignments'],
-	}),
-	withShow(browserlessWsEndpointBase, {
-		resource: ['users'],
-		operation: ['startMeritBadge'],
 	}),
 
 	withShow(debugModeBase, {

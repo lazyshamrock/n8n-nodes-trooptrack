@@ -11,6 +11,7 @@ import { usersOperations, usersFields } from './descriptions/Users.description';
 import { eventsOperations, eventsFields } from './descriptions/Events.description';
 import { genericOperations, genericFields } from './descriptions/Generic.description';
 import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description';
+import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description';
 import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description';
 import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description';
 import type { ResourceHandler } from './resources/types';
@@ -27,6 +28,7 @@ import { mailingListsResource } from './resources/mailingLists';
 import { userAchievementsResource } from './resources/userAchievements';
 import { patrolsResource } from './resources/patrols';
 import { genericResource } from './resources/generic';
+import { meritBadgesResource } from './resources/meritBadges';
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -51,6 +53,7 @@ export class TroopTrack implements INodeType {
 				noDataExpression: true,
 				options: [
 					{ name: 'Achievement', value: 'achievementsCategory' },
+					{ name: 'Merit Badge', value: 'meritBadges' },
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
 					{ name: 'User', value: 'users' },
 					{ name: 'Event', value: 'events' },
@@ -62,6 +65,7 @@ export class TroopTrack implements INodeType {
 
 			// Operations
 			...achievementsCategoryOperations,
+			...meritBadgeOperations,
 			...generalTroopTrackOperations,
 			...eventsOperations,
 			...mailingListsOperations,
@@ -70,6 +74,7 @@ export class TroopTrack implements INodeType {
 
 			// Fields
 			...achievementsCategoryFields,
+			...meritBadgeFields,
 			...generalTroopTrackFields,
 			...eventsFields,
 			...mailingListsFields,
@@ -133,6 +138,7 @@ export class TroopTrack implements INodeType {
 		const returnData: INodeExecutionData[] = [];
 		const resourceHandlers: Record<string, ResourceHandler> = {
 			achievementsCategory: achievementsCategoryResource,
+			meritBadges: meritBadgesResource,
 			generalTroopTrack: generalTroopTrackResource,
 			tokens: tokensResource,
 			users: usersResource,

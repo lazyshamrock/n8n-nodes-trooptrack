@@ -564,6 +564,73 @@ export const achievementsResource: ResourceHandler = {
 					await sleep(delayMs);
 					await addScreenshot(page, `batch_${batchIndex}_filled`);
 
+					const formInfo = await page.evaluate(() => {
+						const doc = (globalThis as any).document;
+						const form = doc.querySelector('#new_blue_card_printer');
+						if (!form) {
+							return { error: 'form_not_found' };
+						}
+
+						const action = form.getAttribute('action') || '';
+						const method = (form.getAttribute('method') || 'post').toLowerCase();
+						const target = form.getAttribute('target') || '';
+
+						const inputs = Array.from(form.querySelectorAll('input, select, textarea'));
+						const pairs: Array<[string, string]> = [];
+						const selected: Record<string, string> = {};
+
+						for (const el of inputs as any[]) {
+							const name = el.getAttribute?.('name') || '';
+							if (!name) continue;
+							const tag = String(el.tagName || '').toLowerCase();
+							const type = (el.getAttribute?.('type') || '').toLowerCase();
+
+							if (tag === 'select') {
+								const sel = el as any;
+								const opt = sel.options?.[sel.selectedIndex];
+								const value = opt ? String(opt.value ?? '') : '';
+								selected[name] = value;
+								pairs.push([name, value]);
+								continue;
+							}
+
+							if (type === 'checkbox' || type === 'radio') {
+								if (!el.checked) continue;
+								pairs.push([name, String(el.value ?? 'on')]);
+								continue;
+							}
+
+							pairs.push([name, String(el.value ?? '')]);
+						}
+
+						const submit =
+							form.querySelector('input[type="submit"]') || form.querySelector('button[type="submit"]');
+						const printDisabled = Boolean(
+							submit && (submit.disabled || submit.getAttribute('disabled') !== null),
+						);
+						if (submit && printDisabled) {
+							submit.removeAttribute('disabled');
+							submit.disabled = false;
+						}
+
+						const body = pairs
+							.map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+							.join('&');
+
+						return { action, method, target, body, printDisabled, selected };
+					});
+
+					if (debugMode) {
+						debug.form = {
+							action: formInfo?.action,
+							method: formInfo?.method,
+							target: formInfo?.target,
+							printDisabled: formInfo?.printDisabled,
+							selected: formInfo?.selected,
+							error: formInfo?.error,
+						};
+					}
+
 					const trackedResponses: Array<{ url: string; status?: number; headers?: Record<string, any> }> = [];
 					const onResponse = (res: any) => {
 						try {
@@ -602,7 +669,9 @@ export const achievementsResource: ResourceHandler = {
 								const url = String(res?.url?.() ?? '').toLowerCase();
 								const headers = res?.headers ? res.headers() : {};
 								const contentType = String(headers?.['content-type'] ?? '').toLowerCase();
-								return contentType.includes('application/pdf') || url.includes('blue_card_printer.pdf');
+								const isTroopTrack = url.includes('trooptrack.com');
+								const isBlueCard = url.includes('blue_card_printer');
+								return isTroopTrack && isBlueCard && contentType.includes('application/pdf');
 							},
 							{ timeout: 45000 },
 						)
@@ -625,6 +694,70 @@ export const achievementsResource: ResourceHandler = {
 					const pdfResponsePromise = waitForPdfResponseOnBrowser(page.browser(), 45000);
 					const newTabPdfPromise = waitForPdfInNewTab(page, 45000).catch(() => null);
 
+					let pdfBytes: Uint8Array | null = null;
+					let printerUrl: string | null = null;
+					let pdfUrlFromLocation: string | null = null;
+
+					if (formInfo && !formInfo.error && formInfo.body) {
+						const postUrl = formInfo.action
+							? formInfo.action.startsWith('http')
+								? formInfo.action
+								: `${baseUrl}${formInfo.action}`
+							: `${baseUrl}/achieve/blue_card_printer.pdf`;
+						try {
+							const postResult = await page.evaluate(
+								async ({ url, body, method }) => {
+									const res = await fetch(url, {
+										method: method || 'post',
+										headers: {
+											'Content-Type': 'application/x-www-form-urlencoded',
+										},
+										body,
+									});
+									const headers: Record<string, string> = {};
+									try {
+										res.headers.forEach((value, key) => {
+											headers[key] = value;
+										});
+									} catch {
+										// ignore
+									}
+									const buf = await res.arrayBuffer();
+									return {
+										ok: res.ok,
+										status: res.status,
+										headers,
+										bytes: Array.from(new Uint8Array(buf)),
+									};
+								},
+								{ url: postUrl, body: formInfo.body, method: formInfo.method },
+							);
+
+							if (debugMode) {
+								debug.pdfPost = {
+									url: postUrl,
+									status: postResult?.status,
+									ok: postResult?.ok,
+									headers: postResult?.headers,
+								};
+							}
+
+							if (postResult?.bytes?.length) {
+								pdfBytes = new Uint8Array(postResult.bytes);
+							}
+						} catch (e) {
+							if (debugMode) {
+								debug.pdfPost = {
+									url: postUrl,
+									error: e instanceof Error ? e.message : String(e),
+								};
+							}
+						}
+					}
+
+					if (isPdfBytes(pdfBytes)) {
+						// captured via direct POST, skip submit
+					} else {
 						await page.evaluate(() => {
 							const doc = (globalThis as any).document;
 							const submit =
@@ -639,12 +772,9 @@ export const achievementsResource: ResourceHandler = {
 								form.submit();
 							}
 						});
-					await dismissNotificationPopup(page);
-					await addScreenshot(page, `batch_${batchIndex}_submitted`);
-
-					let pdfBytes: Uint8Array | null = null;
-					let printerUrl: string | null = null;
-					let pdfUrlFromLocation: string | null = null;
+						await dismissNotificationPopup(page);
+						await addScreenshot(page, `batch_${batchIndex}_submitted`);
+					}
 
 					try {
 						const firstPdf = await Promise.race([pagePdfResponsePromise, newTabPdfPromise]);

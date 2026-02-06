@@ -8,7 +8,6 @@ import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/coun
 import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
 import { permissionsResource } from './permissions';
 import { positionsResource } from './positions';
-import { achievementsResource } from './achievements';
 
 const nullIfEmptyString = (value: any) => {
 	if (typeof value === 'string' && value.trim() === '') return null;
@@ -184,7 +183,6 @@ export const usersResource: ResourceHandler = {
 		'getAllergies',
 		'setPermissions',
 		'createAssignments',
-		'startMeritBadge',
 	]),
 	async execute(ctx, items, itemIndex, operation) {
 		if (operation === 'setPermissions') {
@@ -193,10 +191,6 @@ export const usersResource: ResourceHandler = {
 
 		if (operation === 'createAssignments') {
 			return await positionsResource.execute(ctx, items, itemIndex, 'createAssignments');
-		}
-
-		if (operation === 'startMeritBadge') {
-			return await achievementsResource.execute(ctx, items, itemIndex, 'startMeritBadge');
 		}
 
 		const runProfileFieldScrape = async (field: 'BSA_id' | 'date_joined' | 'allergies') => {
