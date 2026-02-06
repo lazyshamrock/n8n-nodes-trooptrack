@@ -140,6 +140,5 @@ export const achievementsCategoryFields: INodeProperties[] = [
 				operation: ['userAchievementsGetMany', 'userAchievementsGetById'],
 			},
 		},
-	},
-	{
+	}
 ];
