@@ -38,10 +38,6 @@ export const usersOperations: INodeProperties[] = [
 				value: 'getMany', 
 				description: 'GET /v1/users', 
 				action: 'Users: Get Many (API or 🌐)' },
-			{ name: 'Users: Set Permissions', 
-				value: 'setPermissions', 
-				description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', 
-				action: 'Users: Set TroopTrack Permission' },
 		],
 		default: 'getMany',
 	},
@@ -164,62 +160,6 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
-	{	displayName: 'User ID Field',
-		name: 'user_id',
-		type: 'string',
-		required: true,
-		default: 'user_id',
-		placeholder: 'user_id',
-		typeOptions: {
-			requiresDataPath: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['setPermissions'],
-			},
-		},
-		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
-	},
-
-	{
-		displayName: 'Access Level Field',
-		name: 'access_level',
-		type: 'string',
-		required: true,
-		default: 'access_level',
-		placeholder: 'access_level',
-		typeOptions: {
-			requiresDataPath: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['setPermissions'],
-			},
-		},
-		description: 'Name of the input field containing the access_level to set. You can drag a field from the input sidebar. Only the field name will be used.',
-	},
-
-	{
-		displayName: 'Granted Permissions Field',
-		name: 'granted_permissions',
-		type: 'string',
-		required: true,
-		default: 'granted_permissions',
-		placeholder: 'granted_permissions',
-		typeOptions: {
-			requiresDataPath: true,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['setPermissions'],
-			},
-		},
-		description: 'Name of the input field containing an array of permission IDs (numbers) to grant. You can drag a field from the input sidebar. Only the field name will be used.',
-	},
-
 	{
 		displayName: 'Position ID Field Name',
 		name: 'positionIdField',
@@ -266,23 +206,6 @@ export const usersFields: INodeProperties[] = [
 		displayName: 'Delay (Ms)',
 		name: 'delayMs',
 		type: 'number',
-		required: true,
-		default: 300,
-		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['setPermissions'],
-			},
-		},
-	},
-	{
-		displayName: 'Delay (Ms)',
-		name: 'delayMs',
-		type: 'number',
 		default: 300,
 		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
 		typeOptions: {
@@ -292,23 +215,6 @@ export const usersFields: INodeProperties[] = [
 			show: {
 				resource: ['users'],
 				operation: ['createAssignments'],
-			},
-		},
-	},
-	{
-		displayName: 'Batch Size',
-		name: 'batchSize',
-		type: 'number',
-		required: true,
-		default: 0,
-		description: 'Optional. Process work in chunks. 0 means no batching.',
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['users'],
-				operation: ['setPermissions'],
 			},
 		},
 	},
@@ -354,7 +260,7 @@ export const usersFields: INodeProperties[] = [
 	}),
 	withShow(browserlessWsEndpointBase, {
 		resource: ['users'],
-		operation: ['setPermissions', 'createAssignments'],
+		operation: ['createAssignments'],
 	}),
 
 	withShow(debugModeBase, {
@@ -363,13 +269,6 @@ export const usersFields: INodeProperties[] = [
 		returnType: ['extended'],
 	}),
 
-	withShow({
-		...debugModeBase,
-		required: true,
-	}, {
-		resource: ['users'],
-		operation: ['setPermissions'],
-	}),
 	withShow(debugModeBase, {
 		resource: ['users'],
 		operation: ['createAssignments'],

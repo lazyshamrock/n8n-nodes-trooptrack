@@ -6,7 +6,6 @@ import { scrapeTroopTrackHealthFormDates } from '../puppeteer/scrapers/healthFor
 import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
-import { permissionsResource } from './permissions';
 import { positionsResource } from './positions';
 
 const nullIfEmptyString = (value: any) => {
@@ -181,14 +180,9 @@ export const usersResource: ResourceHandler = {
 		'getBsaId',
 		'getDateJoined',
 		'getAllergies',
-		'setPermissions',
 		'createAssignments',
 	]),
 	async execute(ctx, items, itemIndex, operation) {
-		if (operation === 'setPermissions') {
-			return await permissionsResource.execute(ctx, items, itemIndex, 'setPermissions');
-		}
-
 		if (operation === 'createAssignments') {
 			return await positionsResource.execute(ctx, items, itemIndex, 'createAssignments');
 		}

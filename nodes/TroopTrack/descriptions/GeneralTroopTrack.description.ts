@@ -34,12 +34,6 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 				action: 'Get my basic info',
 			},
 			{
-				name: 'Permissions: Get Many',
-				value: 'permissionsGetMany',
-				description: 'Scrape TroopTrack permission list (Privileges tab) from the web UI',
-				action: 'Permissions: Get TroopTrack permissions 🌐',
-			},
-			{
 				name: 'Positions: Get Many',
 				value: 'positionsGetMany',
 				description: 'Scrape available Scout and Adult leadership positions (web UI)',
@@ -77,20 +71,6 @@ const debugModeBase: INodeProperties = {
 
 export const generalTroopTrackFields: INodeProperties[] = [
 	{
-		displayName: 'Demo Adult User ID',
-		name: 'demoAdultUserId',
-		type: 'number',
-		required: true,
-		default: 0,
-		displayOptions: {
-			show: {
-				resource: ['generalTroopTrack'],
-				operation: ['permissionsGetMany'],
-			},
-		},
-		description: 'An Adult user ID used only to open the Privileges tab and read the available permissions',
-	},
-	{
 		displayName: 'Scout User ID',
 		name: 'demoScoutUserId',
 		type: 'number',
@@ -120,36 +100,12 @@ export const generalTroopTrackFields: INodeProperties[] = [
 	},
 	withShow(browserlessWsEndpointBase, {
 		resource: ['generalTroopTrack'],
-		operation: ['permissionsGetMany', 'positionsGetMany'],
-	}),
-	withShow({
-		...debugModeBase,
-		required: true,
-	}, {
-		resource: ['generalTroopTrack'],
-		operation: ['permissionsGetMany'],
+		operation: ['positionsGetMany'],
 	}),
 	withShow(debugModeBase, {
 		resource: ['generalTroopTrack'],
 		operation: ['positionsGetMany'],
 	}),
-	{
-		displayName: 'Delay (Ms)',
-		name: 'delayMs',
-		type: 'number',
-		required: true,
-		default: 300,
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['generalTroopTrack'],
-				operation: ['permissionsGetMany'],
-			},
-		},
-		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
-	},
 	{
 		displayName: 'Delay (Ms)',
 		name: 'delayMs',
@@ -165,23 +121,6 @@ export const generalTroopTrackFields: INodeProperties[] = [
 			},
 		},
 		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
-	},
-	{
-		displayName: 'Batch Size',
-		name: 'batchSize',
-		type: 'number',
-		required: true,
-		default: 0,
-		typeOptions: {
-			minValue: 0,
-		},
-		displayOptions: {
-			show: {
-				resource: ['generalTroopTrack'],
-				operation: ['permissionsGetMany'],
-			},
-		},
-		description: 'Optional. Process work in chunks. 0 means no batching.',
 	},
 	{
 		displayName: 'Batch Size',
