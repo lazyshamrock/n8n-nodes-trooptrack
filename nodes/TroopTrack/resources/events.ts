@@ -22,7 +22,7 @@ export const eventsResource: ResourceHandler = {
 			const resp = await troopTrackRequest(ctx, 'GET', `/v1/events/${eventId}`);
 
 			// Some APIs return { event: {...} }, others return the object directly.
-			return resp?.event ?? resp;
+			return resp;
 		}
 
 		if (operation === 'create') {

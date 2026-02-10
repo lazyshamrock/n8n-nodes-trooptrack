@@ -85,16 +85,6 @@ export class TroopTrack implements INodeType {
 			...usersFields,
 			...genericFields,
 		],
-		codex: {
-			categories: [
-				'Users',
-				'Achievements',
-				'Events',
-				'Communicate',
-				'Generic'
-				// Add other categories in the exact order you want
-			],
-		},
 	};
 
 	methods = {
