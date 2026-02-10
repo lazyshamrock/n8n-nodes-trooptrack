@@ -29,7 +29,7 @@ export const eventsResource: ResourceHandler = {
 			const createBody = ctx.getNodeParameter('createBody', itemIndex) as object;
 			const resp = await troopTrackRequest(ctx, 'POST', '/v1/events', {}, createBody);
 
-			return resp?.event ?? resp;
+			return resp;
 		}
 
 		if (operation === 'getTypes') {
