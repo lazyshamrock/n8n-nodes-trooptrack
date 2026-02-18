@@ -1,6 +1,66 @@
 import type { ResourceHandler } from './types';
 import { troopTrackRequest } from '../GenericFunctions';
 
+function parseUserIds(value: unknown, fieldName: string): number[] {
+	let raw: unknown[] = [];
+
+	if (Array.isArray(value)) {
+		raw = value;
+	} else if (typeof value === 'string') {
+		const trimmed = value.trim();
+		if (!trimmed) return [];
+		try {
+			const parsed = JSON.parse(trimmed);
+			if (Array.isArray(parsed)) {
+				raw = parsed;
+			} else {
+				throw new Error(`Field "${fieldName}" must be a JSON array`);
+			}
+		} catch (error: any) {
+			throw new Error(`Field "${fieldName}" must be a JSON array of user IDs. ${error?.message ?? ''}`.trim());
+		}
+	} else if (value == null) {
+		return [];
+	} else {
+		throw new Error(`Field "${fieldName}" must be a JSON array of user IDs`);
+	}
+
+	const ids = raw.map((entry) => Number(entry));
+	const invalid = ids.find((id) => !Number.isInteger(id) || id <= 0);
+	if (invalid !== undefined) {
+		throw new Error(`Field "${fieldName}" contains an invalid user ID: ${String(invalid)}`);
+	}
+
+	return Array.from(new Set(ids));
+}
+
+function buildEventTrackers(
+	statusGroups: Array<{ statusKey: 'status_cd' | 'attendance_status_cd'; statusValue: string; userIds: number[] }>,
+): Array<{ user_id: number; status_cd?: string; attendance_status_cd?: string }> {
+	const seenUsers = new Map<number, string>();
+	const trackers: Array<{ user_id: number; status_cd?: string; attendance_status_cd?: string }> = [];
+
+	for (const group of statusGroups) {
+		for (const userId of group.userIds) {
+			const alreadyAssigned = seenUsers.get(userId);
+			if (alreadyAssigned !== undefined) {
+				throw new Error(
+					`User ID ${userId} is assigned to multiple status groups (${alreadyAssigned}, ${group.statusValue})`,
+				);
+			}
+
+			seenUsers.set(userId, group.statusValue);
+			if (group.statusKey === 'status_cd') {
+				trackers.push({ user_id: userId, status_cd: group.statusValue });
+			} else {
+				trackers.push({ user_id: userId, attendance_status_cd: group.statusValue });
+			}
+		}
+	}
+
+	return trackers;
+}
+
 export const eventsResource: ResourceHandler = {
 	resource: 'events',
 	async execute(ctx, _items, itemIndex, operation) {
@@ -46,6 +106,66 @@ export const eventsResource: ResourceHandler = {
 				return resp;
 			}
 			return [];
+		}
+
+		if (operation === 'rsvp') {
+			const eventId = ctx.getNodeParameter('eventId', itemIndex) as number;
+			const rsvpYesUserIds = parseUserIds(
+				ctx.getNodeParameter('rsvpYesUserIds', itemIndex, []),
+				'rsvpYesUserIds',
+			);
+			const rsvpNoUserIds = parseUserIds(
+				ctx.getNodeParameter('rsvpNoUserIds', itemIndex, []),
+				'rsvpNoUserIds',
+			);
+			const rsvpTbdUserIds = parseUserIds(
+				ctx.getNodeParameter('rsvpTbdUserIds', itemIndex, []),
+				'rsvpTbdUserIds',
+			);
+
+			const eventTrackers = buildEventTrackers([
+				{ statusKey: 'status_cd', statusValue: 'yes', userIds: rsvpYesUserIds },
+				{ statusKey: 'status_cd', statusValue: 'no', userIds: rsvpNoUserIds },
+				{ statusKey: 'status_cd', statusValue: 'tbd', userIds: rsvpTbdUserIds },
+			]);
+
+			if (eventTrackers.length === 0) {
+				throw new Error('At least one RSVP user ID is required');
+			}
+
+			return troopTrackRequest(ctx, 'POST', `/v1/events/${eventId}/multiple_rsvp`, {}, {
+				event_trackers: eventTrackers,
+			});
+		}
+
+		if (operation === 'attendance') {
+			const eventId = ctx.getNodeParameter('eventId', itemIndex) as number;
+			const attendanceAttendedUserIds = parseUserIds(
+				ctx.getNodeParameter('attendanceAttendedUserIds', itemIndex, []),
+				'attendanceAttendedUserIds',
+			);
+			const attendanceDidNotAttendUserIds = parseUserIds(
+				ctx.getNodeParameter('attendanceDidNotAttendUserIds', itemIndex, []),
+				'attendanceDidNotAttendUserIds',
+			);
+			const attendanceNoClueUserIds = parseUserIds(
+				ctx.getNodeParameter('attendanceNoClueUserIds', itemIndex, []),
+				'attendanceNoClueUserIds',
+			);
+
+			const eventTrackers = buildEventTrackers([
+				{ statusKey: 'attendance_status_cd', statusValue: '1', userIds: attendanceAttendedUserIds },
+				{ statusKey: 'attendance_status_cd', statusValue: '0', userIds: attendanceDidNotAttendUserIds },
+				{ statusKey: 'attendance_status_cd', statusValue: '2', userIds: attendanceNoClueUserIds },
+			]);
+
+			if (eventTrackers.length === 0) {
+				throw new Error('At least one attendance user ID is required');
+			}
+
+			return troopTrackRequest(ctx, 'POST', `/v1/events/${eventId}/attendance`, {}, {
+				event_trackers: eventTrackers,
+			});
 		}
 
 		throw new Error(`Unsupported events operation: ${operation} (index ${itemIndex})`);

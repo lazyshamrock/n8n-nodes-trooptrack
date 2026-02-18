@@ -34,6 +34,10 @@ export const usersOperations: INodeProperties[] = [
 				value: 'getById', 
 				description: 'GET /v1/users/{ID}', 
 				action: 'Users: Get User by ID' },
+			{ name: 'Users: Get Household Emails',
+				value: 'getHouseholdEmails',
+				description: 'Build household email arrays for input users using /v1/users and /v1/users/{ID}',
+				action: 'Users: Get household emails' },
 			{ name: 'Users: Get Many', 
 				value: 'getMany', 
 				description: 'GET /v1/users', 
@@ -156,7 +160,20 @@ export const usersFields: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['users'],
-				operation: ['createAssignments'],
+				operation: ['createAssignments', 'getHouseholdEmails'],
+			},
+		},
+	},
+	{
+		displayName: 'Exclude Other Adult Household Emails (Adults Only)',
+		name: 'excludeOtherAdultHouseholdEmailsForAdultsOnly',
+		type: 'boolean',
+		default: false,
+		description: 'If enabled and the selected user is an adult, only include that user\'s own email address',
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getHouseholdEmails'],
 			},
 		},
 	},

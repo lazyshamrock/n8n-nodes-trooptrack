@@ -180,6 +180,7 @@ export const usersResource: ResourceHandler = {
 		'getBsaId',
 		'getDateJoined',
 		'getAllergies',
+		'getHouseholdEmails',
 		'createAssignments',
 	]),
 	async execute(ctx, items, itemIndex, operation) {
@@ -800,6 +801,134 @@ export const usersResource: ResourceHandler = {
 				const id = toNumberOrNull(u?.user_id);
 				return id == null || !excludeUserIds.has(id);
 			});
+		}
+
+		if (operation === 'getHouseholdEmails') {
+			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
+			const excludeOtherAdultHouseholdEmailsForAdultsOnly = ctx.getNodeParameter(
+				'excludeOtherAdultHouseholdEmailsForAdultsOnly',
+				0,
+				false,
+			) as boolean;
+
+			const rawUsers = await troopTrackRequest(ctx, 'GET', '/v1/users', {}, {});
+			const usersWrapper = Array.isArray(rawUsers) ? rawUsers[0] : rawUsers;
+			const seedUsers = Array.isArray(usersWrapper?.users)
+				? usersWrapper.users
+				: Array.isArray(usersWrapper)
+					? usersWrapper
+					: [];
+
+			const seedById = new Map<number, any>();
+			const seedUserIds: number[] = [];
+			for (const user of seedUsers) {
+				const userId = toNumberOrNull(user?.user_id);
+				if (userId == null || userId <= 0) continue;
+				if (!seedById.has(userId)) {
+					seedById.set(userId, user);
+					seedUserIds.push(userId);
+				}
+			}
+
+			const detailedById = new Map<number, any>();
+			for (const userId of seedUserIds) {
+				try {
+					const resp = await troopTrackRequest(ctx, 'GET', `/v1/users/${userId}`);
+					const userObj = resp?.user ?? resp;
+					if (userObj && typeof userObj === 'object') {
+						detailedById.set(userId, { ...userObj, user_id: (userObj as any).user_id ?? userId });
+					} else if (seedById.has(userId)) {
+						detailedById.set(userId, { ...(seedById.get(userId) as any), user_id: userId });
+					}
+				} catch (_e) {
+					if (seedById.has(userId)) {
+						detailedById.set(userId, { ...(seedById.get(userId) as any), user_id: userId });
+					}
+				}
+			}
+
+			const householdToUsers = new Map<number, any[]>();
+			for (const user of detailedById.values()) {
+				const households = Array.isArray(user?.households) ? user.households : [];
+				for (const household of households) {
+					const householdId = toNumberOrNull((household as any)?.household_id);
+					if (householdId == null || householdId <= 0) continue;
+					const current = householdToUsers.get(householdId) ?? [];
+					current.push(user);
+					householdToUsers.set(householdId, current);
+				}
+			}
+
+			const normalizeEmail = (value: any): string | null => {
+				if (value == null) return null;
+				const email = String(value).trim();
+				return email === '' ? null : email;
+			};
+
+			const dedupeEmails = (emails: string[]): string[] => {
+				const seen = new Set<string>();
+				const out: string[] = [];
+				for (const email of emails) {
+					const normalized = email.trim();
+					if (!normalized) continue;
+					const key = normalized.toLowerCase();
+					if (seen.has(key)) continue;
+					seen.add(key);
+					out.push(normalized);
+				}
+				return out;
+			};
+
+			const enriched = items.map((item) => {
+				const row = item.json as Record<string, any>;
+				const selectedUserId = toNumberOrNull(row?.[userIdField]);
+				if (selectedUserId == null || selectedUserId <= 0) {
+					return { ...row, household_emails: [] as string[] };
+				}
+
+				const selectedUser = detailedById.get(selectedUserId);
+				if (!selectedUser) {
+					return { ...row, household_emails: [] as string[] };
+				}
+
+				const selectedEmail = normalizeEmail(selectedUser?.email);
+				const selectedIsAdult = toBoolOrNull(selectedUser?.scout) === false;
+
+				if (selectedIsAdult && excludeOtherAdultHouseholdEmailsForAdultsOnly) {
+					return {
+						...row,
+						household_emails: selectedEmail ? [selectedEmail] : [],
+					};
+				}
+
+				const householdIds = (Array.isArray(selectedUser?.households) ? selectedUser.households : [])
+					.map((household: any) => toNumberOrNull(household?.household_id))
+					.filter((id: number | null): id is number => id != null && id > 0);
+
+				const emailCandidates: string[] = [];
+				if (selectedEmail) {
+					emailCandidates.push(selectedEmail);
+				}
+
+				for (const householdId of householdIds) {
+					const householdUsers = householdToUsers.get(householdId) ?? [];
+					for (const householdUser of householdUsers) {
+						const isAdult = toBoolOrNull(householdUser?.scout) === false;
+						if (!isAdult) continue;
+						const email = normalizeEmail(householdUser?.email);
+						if (email) {
+							emailCandidates.push(email);
+						}
+					}
+				}
+
+				return {
+					...row,
+					household_emails: dedupeEmails(emailCandidates),
+				};
+			});
+
+			return enriched;
 		}
 
 		if (operation === 'getById') {
