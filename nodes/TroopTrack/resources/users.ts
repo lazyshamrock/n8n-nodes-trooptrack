@@ -7,6 +7,9 @@ import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
 import { positionsResource } from './positions';
+import type { IExecuteFunctions } from 'n8n-workflow';
+
+const USER_DETAIL_CONCURRENCY = 12;
 
 const nullIfEmptyString = (value: any) => {
 	if (typeof value === 'string' && value.trim() === '') return null;
@@ -169,6 +172,63 @@ const normalizeExtendedUser = (user: Record<string, any>) => {
 
 	return out;
 };
+
+async function fetchDetailedUsersById(
+	ctx: IExecuteFunctions,
+	userIds: number[],
+	options?: {
+		debugMode?: boolean;
+		fallbackById?: Map<number, any>;
+		errorPrefix?: string;
+	},
+): Promise<Map<number, any>> {
+	const debugMode = options?.debugMode ?? false;
+	const fallbackById = options?.fallbackById;
+	const errorPrefix = options?.errorPrefix ?? 'GET /v1/users/{id} failed';
+
+	const out = new Map<number, any>();
+	const workerCount = Math.min(USER_DETAIL_CONCURRENCY, Math.max(1, userIds.length));
+	let cursor = 0;
+
+	const worker = async () => {
+		while (true) {
+			const index = cursor++;
+			if (index >= userIds.length) break;
+
+			const userId = userIds[index];
+			if (userId === undefined) break;
+			try {
+				const resp = await troopTrackRequest(ctx, 'GET', `/v1/users/${userId}`);
+				const userObj = resp?.user ?? resp;
+				if (userObj && typeof userObj === 'object') {
+					out.set(userId, { ...userObj, user_id: (userObj as any).user_id ?? userId });
+				} else if (fallbackById?.has(userId)) {
+					out.set(userId, { ...(fallbackById.get(userId) as any), user_id: userId });
+				} else {
+					out.set(userId, { user_id: userId });
+				}
+			} catch (e) {
+				if (debugMode) {
+					const msg = e instanceof Error ? e.message : String(e);
+					throw new Error(`${errorPrefix}: GET /v1/users/${userId} failed: ${msg}`);
+				}
+
+				if (fallbackById?.has(userId)) {
+					out.set(userId, { ...(fallbackById.get(userId) as any), user_id: userId });
+				} else {
+					out.set(userId, { user_id: userId });
+				}
+			}
+		}
+	};
+
+	if (workerCount === 0) {
+		return out;
+	}
+
+	await Promise.all(Array.from({ length: workerCount }, async () => worker()));
+	return out;
+}
 
 export const usersResource: ResourceHandler = {
 	resource: 'users',
@@ -335,29 +395,12 @@ export const usersResource: ResourceHandler = {
 					.map((u: any) => Number(u?.user_id))
 					.filter((n: number) => Number.isFinite(n) && n > 0);
 
-				// 2) Fetch full API payload for each user via GET /v1/users/{id} (sequential)
-				const detailedUsers: any[] = [];
-				for (const userId of userIds) {
-					try {
-						const resp = await troopTrackRequest(ctx, 'GET', `/v1/users/${userId}`);
-						const userObj = resp?.user ?? resp;
-
-						// Ensure user_id is always present for later merges
-						if (userObj && typeof userObj === 'object') {
-							(userObj as any).user_id = (userObj as any).user_id ?? userId;
-							detailedUsers.push(userObj);
-						} else {
-							detailedUsers.push({ user_id: userId });
-						}
-					} catch (e) {
-						if (debugMode) {
-							const msg = e instanceof Error ? e.message : String(e);
-							throw new Error(`Users > Get Many > Extended: GET /v1/users/${userId} failed: ${msg}`);
-						}
-						// Requirement: return as much as we can. Keep a record with at least user_id.
-						detailedUsers.push({ user_id: userId });
-					}
-				}
+				// 2) Fetch full API payload for each user via GET /v1/users/{id} using bounded concurrency.
+				const detailedById = await fetchDetailedUsersById(ctx, userIds, {
+					debugMode,
+					errorPrefix: 'Users > Get Many > Extended',
+				});
+				const detailedUsers: any[] = userIds.map((userId) => detailedById.get(userId) ?? { user_id: userId });
 
 				// 3) Optional enrichment (API + scraping), driven by dataToInclude
 				const wants = {
@@ -830,22 +873,10 @@ export const usersResource: ResourceHandler = {
 				}
 			}
 
-			const detailedById = new Map<number, any>();
-			for (const userId of seedUserIds) {
-				try {
-					const resp = await troopTrackRequest(ctx, 'GET', `/v1/users/${userId}`);
-					const userObj = resp?.user ?? resp;
-					if (userObj && typeof userObj === 'object') {
-						detailedById.set(userId, { ...userObj, user_id: (userObj as any).user_id ?? userId });
-					} else if (seedById.has(userId)) {
-						detailedById.set(userId, { ...(seedById.get(userId) as any), user_id: userId });
-					}
-				} catch (_e) {
-					if (seedById.has(userId)) {
-						detailedById.set(userId, { ...(seedById.get(userId) as any), user_id: userId });
-					}
-				}
-			}
+			const detailedById = await fetchDetailedUsersById(ctx, seedUserIds, {
+				fallbackById: seedById,
+				errorPrefix: 'Users > Get Household Emails',
+			});
 
 			const householdToUsers = new Map<number, any[]>();
 			for (const user of detailedById.values()) {
