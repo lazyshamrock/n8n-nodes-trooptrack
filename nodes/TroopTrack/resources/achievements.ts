@@ -2,7 +2,7 @@ import type { ResourceHandler } from './types';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
 import { troopTrackRequest } from '../GenericFunctions';
 import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
 import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge';
@@ -319,12 +319,150 @@ const waitForPdfResponseOnBrowser = async (browser: any, timeoutMs: number) => {
 		}
 	});
 };
+
+const textWidthAtSize = (font: PDFFont, text: string, fontSize: number): number => {
+	if (!text) return 0;
+	return font.widthOfTextAtSize(text, fontSize);
+};
+
+const splitLongWordToWidth = (
+	word: string,
+	maxWidth: number,
+	font: PDFFont,
+	fontSize: number,
+): string[] => {
+	const parts: string[] = [];
+	let current = '';
+
+	for (const ch of word) {
+		const next = `${current}${ch}`;
+		if (textWidthAtSize(font, next, fontSize) <= maxWidth) {
+			current = next;
+			continue;
+		}
+
+		if (current) {
+			parts.push(current);
+			current = ch;
+			continue;
+		}
+
+		// If a single glyph exceeds max width, emit it to avoid infinite loops.
+		parts.push(ch);
+		current = '';
+	}
+
+	if (current) {
+		parts.push(current);
+	}
+
+	return parts;
+};
+
+const wrapTextToWidth = (
+	text: string,
+	maxWidth: number,
+	font: PDFFont,
+	fontSize: number,
+): string[] => {
+	const normalized = String(text ?? '').replace(/\r\n/g, '\n');
+	const paragraphs = normalized.split('\n');
+	const wrapped: string[] = [];
+
+	for (let pIndex = 0; pIndex < paragraphs.length; pIndex++) {
+		const paragraph = paragraphs[pIndex] ?? '';
+		const words = paragraph.trim().split(/\s+/).filter(Boolean);
+
+		if (words.length === 0) {
+			wrapped.push('');
+			continue;
+		}
+
+		let line = '';
+		for (const word of words) {
+			const candidate = line ? `${line} ${word}` : word;
+			if (textWidthAtSize(font, candidate, fontSize) <= maxWidth) {
+				line = candidate;
+				continue;
+			}
+
+			if (line) {
+				wrapped.push(line);
+			}
+
+			if (textWidthAtSize(font, word, fontSize) <= maxWidth) {
+				line = word;
+				continue;
+			}
+
+			const parts = splitLongWordToWidth(word, maxWidth, font, fontSize);
+			if (parts.length === 0) {
+				line = '';
+				continue;
+			}
+
+			for (let i = 0; i < parts.length - 1; i++) {
+				const part = parts[i];
+				if (part) wrapped.push(part);
+			}
+
+			line = parts[parts.length - 1] ?? '';
+		}
+
+		if (line) {
+			wrapped.push(line);
+		}
+
+		if (pIndex < paragraphs.length - 1) {
+			wrapped.push('');
+		}
+	}
+
+	return wrapped;
+};
+
+const withEllipsisToFit = (
+	line: string,
+	maxWidth: number,
+	font: PDFFont,
+	fontSize: number,
+): string => {
+	const ellipsis = '...';
+	if (textWidthAtSize(font, ellipsis, fontSize) > maxWidth) {
+		return '';
+	}
+
+	let base = line.trimEnd();
+	while (base && textWidthAtSize(font, `${base}${ellipsis}`, fontSize) > maxWidth) {
+		base = base.slice(0, -1);
+	}
+
+	return base ? `${base}${ellipsis}` : ellipsis;
+};
+
+const truncateWrappedLines = (
+	lines: string[],
+	maxLines: number,
+	maxWidth: number,
+	font: PDFFont,
+	fontSize: number,
+): string[] => {
+	if (maxLines <= 0) return [];
+	if (lines.length <= maxLines) return lines;
+
+	const out = lines.slice(0, maxLines);
+	out[maxLines - 1] = withEllipsisToFit(out[maxLines - 1] ?? '', maxWidth, font, fontSize);
+	return out;
+};
+
 const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, batch: BlueCardInput[]) => {
 	const x = 470;
 	const xBack = 250;
 	const width = 95;
 	const height = 30;
 	const textX = 405;
+	const remarksMaxWidth = 170;
+	const remarksMaxLines = 5;
 	const fontSize = 10;
 	const lineHeight = 12;
 
@@ -341,7 +479,13 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 	}
 
 	const drawRemarks = (remarks: string, startY: number) => {
-		const textLines = remarks.split('\n');
+		const textLines = truncateWrappedLines(
+			wrapTextToWidth(remarks, remarksMaxWidth, font, fontSize),
+			remarksMaxLines,
+			remarksMaxWidth,
+			font,
+			fontSize,
+		);
 		let currentY = startY;
 		for (const line of textLines) {
 			secondPage.drawText(line, {
