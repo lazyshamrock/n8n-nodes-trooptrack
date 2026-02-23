@@ -183,9 +183,20 @@ function formatHttpError(err: any, method: string, endpoint: string): Error {
 		preview = safeStringify(body ?? {}, 800);
 	}
 
-	return new Error(
+	const formatted = new Error(
 		`TroopTrack API error${status ? ` ${status}` : ''} for ${method} ${endpoint}. Response: ${preview}`,
-	);
+	) as Error & { statusCode?: number };
+
+	if (typeof status === 'number') {
+		formatted.statusCode = status;
+	} else if (status !== undefined && status !== null) {
+		const parsedStatus = Number(status);
+		if (Number.isFinite(parsedStatus)) {
+			formatted.statusCode = parsedStatus;
+		}
+	}
+
+	return formatted;
 }
 
 export async function troopTrackRequest(

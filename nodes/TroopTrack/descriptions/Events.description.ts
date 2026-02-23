@@ -13,7 +13,7 @@ export const eventsOperations: INodeProperties[] = [
 			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Events: Get Details by ID',},
 			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Events: Get Many',},
 			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Events: Get Event Types',},
-			{ name: 'RSVP', value: 'rsvp', description: 'POST /v1/events/{event_id}/multiple_rsvp', action: 'Events: RSVP',},
+			{ name: 'RSVP', value: 'rsvp', description: 'PUT /v1/events/{id}/rsvp', action: 'Events: RSVP',},
 		],
 		default: 'getMany',
 	},
