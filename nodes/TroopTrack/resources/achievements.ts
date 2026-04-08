@@ -2,15 +2,7 @@ import type { ResourceHandler } from './types';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
-<<<<<<< HEAD
-<<<<<<< HEAD
 import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
-=======
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
->>>>>>> 44105df (2026-04-08)
-=======
-import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
->>>>>>> 4c76758 (2026-04-08)
 import { troopTrackRequest } from '../GenericFunctions';
 import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
 import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge';
@@ -399,10 +391,6 @@ const waitForPdfResponseOnBrowser = async (browser: any, timeoutMs: number) => {
 		}
 	});
 };
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 4c76758 (2026-04-08)
 
 const textWidthAtSize = (font: PDFFont, text: string, fontSize: number): number => {
 	if (!text) return 0;
@@ -539,27 +527,14 @@ const truncateWrappedLines = (
 	return out;
 };
 
-<<<<<<< HEAD
-=======
->>>>>>> 44105df (2026-04-08)
-=======
->>>>>>> 4c76758 (2026-04-08)
 const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, batch: BlueCardInput[]) => {
 	const x = 470;
 	const xBack = 250;
 	const width = 95;
 	const height = 30;
 	const textX = 405;
-<<<<<<< HEAD
-<<<<<<< HEAD
 	const remarksMaxWidth = 170;
 	const remarksMaxLines = 5;
-=======
->>>>>>> 44105df (2026-04-08)
-=======
-	const remarksMaxWidth = 170;
-	const remarksMaxLines = 5;
->>>>>>> 4c76758 (2026-04-08)
 	const fontSize = 10;
 	const lineHeight = 12;
 
@@ -576,10 +551,6 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 	}
 
 	const drawRemarks = (remarks: string, startY: number) => {
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 4c76758 (2026-04-08)
 		const textLines = truncateWrappedLines(
 			wrapTextToWidth(remarks, remarksMaxWidth, font, fontSize),
 			remarksMaxLines,
@@ -587,12 +558,6 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 			font,
 			fontSize,
 		);
-<<<<<<< HEAD
-=======
-		const textLines = remarks.split('\n');
->>>>>>> 44105df (2026-04-08)
-=======
->>>>>>> 4c76758 (2026-04-08)
 		let currentY = startY;
 		for (const line of textLines) {
 			secondPage.drawText(line, {
