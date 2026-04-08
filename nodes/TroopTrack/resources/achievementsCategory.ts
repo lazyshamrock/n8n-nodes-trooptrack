@@ -5,7 +5,11 @@ import { userAchievementsResource } from './userAchievements';
 
 export const achievementsCategoryResource: ResourceHandler = {
 	resource: 'achievementsCategory',
+	runOnceOperations: new Set(['achievementsStartOther']),
 	async execute(ctx, items, itemIndex, operation) {
+		if (operation === 'achievementsStartOther') {
+			return await achievementsResource.execute(ctx, items, itemIndex, 'startOtherAchievement');
+		}
 		if (operation === 'achievementsGetMany') {
 			return await achievementsResource.execute(ctx, items, itemIndex, 'getMany');
 		}

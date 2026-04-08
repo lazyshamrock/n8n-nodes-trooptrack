@@ -9,6 +9,12 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['achievementsCategory'] } },
 		options: [
 			{
+				name: 'Achievements: Start Other Achievement',
+				value: 'achievementsStartOther',
+				description: 'Start other achievements for each user_id/award_type_id/achievement_id row (web UI)',
+				action: 'Start other achievements in troop track web ui',
+			},
+			{
 				name: 'Achievements: Get Many',
 				value: 'achievementsGetMany',
 				description: 'GET /v1/achievements',
@@ -50,6 +56,107 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 ];
 
 export const achievementsCategoryFields: INodeProperties[] = [
+	{
+		displayName: 'User ID Field',
+		name: 'user_id',
+		type: 'string',
+		required: true,
+		default: 'user_id',
+		placeholder: 'user_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Award Type ID Field',
+		name: 'award_type_id',
+		type: 'string',
+		required: true,
+		default: 'award_type_id',
+		placeholder: 'award_type_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack award_type_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Achievement ID Field',
+		name: 'achievement_id',
+		type: 'string',
+		required: true,
+		default: 'achievement_id',
+		placeholder: 'achievement_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Browserless WebSocket Endpoint',
+		name: 'browserlessWsEndpoint',
+		type: 'string',
+		required: true,
+		default: '',
+		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
+		description: 'Full Browserless WebSocket endpoint including token query parameter',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+	},
+	{
+		displayName: 'Delay (Ms)',
+		name: 'delayMs',
+		type: 'number',
+		default: 300,
+		description: 'Delay between page loads to reduce flakiness and avoid hammering TroopTrack',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+	},
+	{
+		displayName: 'Batch Size',
+		name: 'batchSize',
+		type: 'number',
+		default: 0,
+		description: 'Optional. Process items in chunks. 0 means no batching. Useful to reduce long-running sessions.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['achievementsStartOther'],
+			},
+		},
+	},
 	{
 		displayName: 'Achievement ID',
 		name: 'achievementId',

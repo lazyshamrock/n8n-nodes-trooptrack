@@ -3,13 +3,18 @@ import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
 =======
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 >>>>>>> 44105df (2026-04-08)
+=======
+import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
+>>>>>>> 4c76758 (2026-04-08)
 import { troopTrackRequest } from '../GenericFunctions';
 import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
 import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge';
+import { startTroopTrackOtherAchievements } from '../puppeteer/scrapers/achievements.startOther';
 
 type BlueCardInput = {
 	user_id: number;
@@ -46,6 +51,77 @@ const readMapped = (item: Record<string, any>, field: string): unknown => {
 		cur = cur[p];
 	}
 	return cur;
+};
+
+const toScalarFieldValue = (value: unknown): string | number | null => {
+	if (typeof value === 'string' || typeof value === 'number') return value;
+	return null;
+};
+
+const collectNestedRecords = (value: any): Record<string, any>[] => {
+	if (value == null) return [];
+	if (Array.isArray(value)) {
+		return value.flatMap((entry) => collectNestedRecords(entry));
+	}
+	if (typeof value !== 'object') return [];
+
+	const record = value as Record<string, any>;
+	const out: Record<string, any>[] = [record];
+	for (const child of Object.values(record)) {
+		if (child && typeof child === 'object') {
+			out.push(...collectNestedRecords(child));
+		}
+	}
+	return out;
+};
+
+const findUserAchievementId = (
+	userPayload: any,
+	awardTypeIdRaw: string | number | null,
+	achievementIdRaw: string | number | null,
+): number | null => {
+	const awardTypeId = normalizeId(awardTypeIdRaw);
+	const achievementId = normalizeId(achievementIdRaw);
+	if (awardTypeId == null || achievementId == null) {
+		return null;
+	}
+
+	const pools = [
+		userPayload?.user_achievements_awards,
+		userPayload?.user_achievements,
+		userPayload?.achievement_trackers,
+		userPayload?.awards,
+	];
+
+	for (const pool of pools) {
+		const records = collectNestedRecords(pool);
+		const match = records.find((record) => {
+			const recordAwardTypeId = normalizeId(
+				record?.award_type_id ??
+					record?.award_type?.award_type_id ??
+					record?.award_type?.id,
+			);
+			const recordAchievementId = normalizeId(
+				record?.achievement_id ??
+					record?.achievement?.achievement_id ??
+					record?.achievement?.id,
+			);
+			return recordAwardTypeId === awardTypeId && recordAchievementId === achievementId;
+		});
+
+		const userAchievementId = normalizeId(
+			match?.user_achievement_id ??
+				match?.id ??
+				match?.user_achievement?.user_achievement_id ??
+				match?.user_achievement?.id,
+		);
+
+		if (userAchievementId != null) {
+			return userAchievementId;
+		}
+	}
+
+	return null;
 };
 
 const formatTimestamp = () => {
@@ -324,6 +400,9 @@ const waitForPdfResponseOnBrowser = async (browser: any, timeoutMs: number) => {
 	});
 };
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c76758 (2026-04-08)
 
 const textWidthAtSize = (font: PDFFont, text: string, fontSize: number): number => {
 	if (!text) return 0;
@@ -460,8 +539,11 @@ const truncateWrappedLines = (
 	return out;
 };
 
+<<<<<<< HEAD
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+>>>>>>> 4c76758 (2026-04-08)
 const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, batch: BlueCardInput[]) => {
 	const x = 470;
 	const xBack = 250;
@@ -469,10 +551,15 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 	const height = 30;
 	const textX = 405;
 <<<<<<< HEAD
+<<<<<<< HEAD
 	const remarksMaxWidth = 170;
 	const remarksMaxLines = 5;
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+	const remarksMaxWidth = 170;
+	const remarksMaxLines = 5;
+>>>>>>> 4c76758 (2026-04-08)
 	const fontSize = 10;
 	const lineHeight = 12;
 
@@ -490,6 +577,9 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 
 	const drawRemarks = (remarks: string, startY: number) => {
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 4c76758 (2026-04-08)
 		const textLines = truncateWrappedLines(
 			wrapTextToWidth(remarks, remarksMaxWidth, font, fontSize),
 			remarksMaxLines,
@@ -497,9 +587,12 @@ const signBlueCardsPdf = async (pdfBytes: Uint8Array, signatureBytes: Buffer, ba
 			font,
 			fontSize,
 		);
+<<<<<<< HEAD
 =======
 		const textLines = remarks.split('\n');
 >>>>>>> 44105df (2026-04-08)
+=======
+>>>>>>> 4c76758 (2026-04-08)
 		let currentY = startY;
 		for (const line of textLines) {
 			secondPage.drawText(line, {
@@ -1291,6 +1384,149 @@ export const achievementsResource: ResourceHandler = {
 				return inputRows.map((row) => ({
 					...row,
 					mb_added: false,
+					errors: [msg],
+				}));
+			}
+		}
+
+		if (operation === 'startOtherAchievement') {
+			const items = _items;
+			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
+			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
+
+			const userIdFieldName = ctx.getNodeParameter('user_id', 0) as string;
+			const awardTypeIdFieldName = ctx.getNodeParameter('award_type_id', 0) as string;
+			const achievementIdFieldName = ctx.getNodeParameter('achievement_id', 0) as string;
+
+			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
+				throw new Error('Browserless WebSocket endpoint is required (including token).');
+			}
+
+			const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);
+
+			try {
+				const credentials = (await ctx.getCredentials('troopTrackApi')) as Record<string, any>;
+				const auth = {
+					tt_sub_domain: String(credentials.tt_sub_domain ?? credentials.subdomain ?? '').trim(),
+					tt_username: String(credentials.tt_username ?? credentials.username ?? '').trim(),
+					tt_password: String(credentials.tt_password ?? credentials.password ?? '').trim(),
+				};
+
+				if (!auth.tt_sub_domain || !auth.tt_username || !auth.tt_password) {
+					throw new Error('Missing TroopTrack credentials fields required for web login');
+				}
+
+				const session = new TroopTrackPuppeteerSession(auth, 120000, browserlessWsEndpoint);
+				const started = await session.withSession(async (page) => {
+					if (delayMs > 0) {
+						await new Promise((resolve) => setTimeout(resolve, delayMs));
+					}
+
+					return await startTroopTrackOtherAchievements(
+						page,
+						auth.tt_sub_domain,
+						inputRows,
+						{
+							user_id: userIdFieldName,
+							award_type_id: awardTypeIdFieldName,
+							achievement_id: achievementIdFieldName,
+						},
+						{
+							delayMs,
+							batchSize,
+						},
+					);
+				});
+
+				const resultByIndex = new Map<
+					number,
+					{
+						user_id: string | number | null;
+						award_type_id: string | number | null;
+						achievement_id: string | number | null;
+						achievement_started: boolean;
+						errors: string[];
+					}
+				>();
+
+				for (const entry of started ?? []) {
+					if (typeof entry?.index === 'number') {
+						resultByIndex.set(entry.index, {
+							user_id: entry?.user_id ?? null,
+							award_type_id: entry?.award_type_id ?? null,
+							achievement_id: entry?.achievement_id ?? null,
+							achievement_started: Boolean(entry?.achievement_started),
+							errors: Array.isArray(entry?.errors) ? entry.errors : ['Unknown error'],
+						});
+					}
+				}
+
+				const outputRows: Array<Record<string, any>> = [];
+
+				for (let idx = 0; idx < inputRows.length; idx++) {
+					const row = inputRows[idx] ?? {};
+					const entry = resultByIndex.get(idx);
+					const userId =
+						entry?.user_id ??
+						toScalarFieldValue(readMapped(row, userIdFieldName)) ??
+						null;
+					const awardTypeId =
+						entry?.award_type_id ??
+						toScalarFieldValue(readMapped(row, awardTypeIdFieldName)) ??
+						null;
+					const achievementId =
+						entry?.achievement_id ??
+						toScalarFieldValue(readMapped(row, achievementIdFieldName)) ??
+						null;
+					const errors = entry ? [...entry.errors] : ['No result returned for item'];
+
+					let userAchievementId: number | null = null;
+					if (entry?.achievement_started) {
+						try {
+							const normalizedUserId = normalizeId(userId);
+							if (normalizedUserId == null) {
+								errors.push(`Invalid ${userIdFieldName}`);
+							} else {
+								const userResp = await troopTrackRequest(ctx, 'GET', `/v1/users/${normalizedUserId}`);
+								const userPayload = userResp?.user ?? userResp;
+								userAchievementId = findUserAchievementId(userPayload, awardTypeId, achievementId);
+								if (userAchievementId == null) {
+									errors.push(
+										`No matching user_achievement_id found for user_id ${normalizedUserId}, award_type_id ${awardTypeId}, achievement_id ${achievementId}`,
+									);
+								}
+							}
+						} catch (e) {
+							const msg = e instanceof Error ? e.message : String(e);
+							errors.push(msg);
+						}
+					}
+
+					const output: Record<string, any> = {
+						...row,
+						user_id: userId,
+						award_type_id: awardTypeId,
+						achievement_id: achievementId,
+						user_achievement_id: userAchievementId,
+					};
+
+					if (errors.length > 0) {
+						output.errors = errors;
+					}
+
+					outputRows.push(output);
+				}
+
+				return outputRows;
+			} catch (e) {
+				const msg = e instanceof Error ? e.message : String(e);
+				return inputRows.map((row) => ({
+					...row,
+					user_id: toScalarFieldValue(readMapped(row, userIdFieldName)),
+					award_type_id: toScalarFieldValue(readMapped(row, awardTypeIdFieldName)),
+					achievement_id: toScalarFieldValue(readMapped(row, achievementIdFieldName)),
+					user_achievement_id: null,
 					errors: [msg],
 				}));
 			}

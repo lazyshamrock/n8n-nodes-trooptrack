@@ -13,9 +13,13 @@ import { genericOperations, genericFields } from './descriptions/Generic.descrip
 import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description';
 import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description';
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
+>>>>>>> 4c76758 (2026-04-08)
 import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description';
 import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description';
 import type { ResourceHandler } from './resources/types';
@@ -59,9 +63,13 @@ export class TroopTrack implements INodeType {
 					{ name: 'Achievement', value: 'achievementsCategory' },
 					{ name: 'Merit Badge', value: 'meritBadges' },
 <<<<<<< HEAD
+<<<<<<< HEAD
 					{ name: 'Permissions', value: 'permissions' },
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+					{ name: 'Permissions', value: 'permissions' },
+>>>>>>> 4c76758 (2026-04-08)
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
 					{ name: 'User', value: 'users' },
 					{ name: 'Event', value: 'events' },
@@ -75,9 +83,13 @@ export class TroopTrack implements INodeType {
 			...achievementsCategoryOperations,
 			...meritBadgeOperations,
 <<<<<<< HEAD
+<<<<<<< HEAD
 			...permissionsOperations,
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+			...permissionsOperations,
+>>>>>>> 4c76758 (2026-04-08)
 			...generalTroopTrackOperations,
 			...eventsOperations,
 			...mailingListsOperations,
@@ -88,9 +100,13 @@ export class TroopTrack implements INodeType {
 			...achievementsCategoryFields,
 			...meritBadgeFields,
 <<<<<<< HEAD
+<<<<<<< HEAD
 			...permissionsFields,
 =======
 >>>>>>> 44105df (2026-04-08)
+=======
+			...permissionsFields,
+>>>>>>> 4c76758 (2026-04-08)
 			...generalTroopTrackFields,
 			...eventsFields,
 			...mailingListsFields,
