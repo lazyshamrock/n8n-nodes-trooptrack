@@ -22,6 +22,7 @@ export const usersOperations: INodeProperties[] = [
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['users'] } },
 		options: [
+<<<<<<< HEAD
 			{ name: 'Users: Add a User', 
 				value: 'update', 
 				description: 'POST /v1/users/{ID}', 
@@ -42,6 +43,56 @@ export const usersOperations: INodeProperties[] = [
 				value: 'getMany', 
 				description: 'GET /v1/users', 
 				action: 'Users: Get Many (API or 🌐)' },
+=======
+			{ name: 'Add a User', 
+				value: 'update', 
+				description: 'POST /v1/users/{ID}', 
+				action: 'Users: Add a user',},
+			{ name: 'Assign Scouts to Positions', 
+				value: 'createAssignments', 
+				description: 'Create new leadership tracker entries for Scouts based on incoming items (web UI)', 
+				action: 'Users: Assign Scouts to Position 🌐' },
+			{ name: 'Get Allergies', 
+				value: 'getAllergies', 
+				description: 'Get allergies (allergies) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].',
+				action: 'Users: Get allergies 🌐', },
+			{ name: 'Get BSA ID', 
+				value: 'getBsaId', 
+				description: 'Get BSA membership ID (BSA_id) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', 
+				action: 'Users: Get BSA ID 🌐' },
+			{ name: 'Get By ID', 
+				value: 'getById', 
+				description: 'GET /v1/users/{ID}', 
+				action: 'Users: Get User by ID' },
+			{ name: 'Get Counseled Merit Badges', 
+				value: 'getCounseledMeritBadges', 
+				description: 'Get counseled merit badges (counseled_MBs) for users keyed by user_id. [Scrapes data from the web UI (/manage/counseled_merit_badges)].', 
+				action: 'Users: Get counseled merit badges 🌐' },
+			{ name: 'Get Date Joined', 
+				value: 'getDateJoined', 
+				description: 'Get date joined (date_joined) for users keyed by user_id. [Scrapes profile pages from the web UI (/manage/users/{ID})].', 
+				action: 'Users: Get date joined 🌐' },
+			{ name: 'Get Health Form Dates', 
+				value: 'getHealthFormDates', 
+				description: 'Get Health Form dates (PartA, PartB, PartC) for users keyed by user_id. [Scrapes data from the web UI (/manage/medical_book)].', 
+				action: 'Users: Get health form dates 🌐' },
+			{ name: 'Get Many', 
+				value: 'getMany', 
+				description: 'GET /v1/users', 
+				action: 'Users: Get Many (API or 🌐)' },
+			{ name: 'Get Text Message Opt Out', 
+				value: 'getTxtOptOut', 
+				description: 'Get text message opt-out status (txtOptOut) for users keyed by user_id. [Scrapes data from the web UI (/communicate/text_message_settings)].', 
+				action: 'Users: Get text message opt out status 🌐'},
+			{ name: 'Get TroopTrack Usernames', 
+				value: 'getUsernames', 
+				description: 'Get the TroopTrack username associated with a specific user_id. [Scrapes data from the web UI (/manage/users)].', 
+				action: 'Users: Get TroopTrack Usernames' },
+			{ name: 'Set Permissions', 
+				value: 'setPermissions', 
+				description: 'Update TroopTrack user permissions (Privileges tab) via the web UI', 
+				action: 'Users: Set TroopTrack Permission' },
+>>>>>>> 44105df (2026-04-08)
 		],
 		default: 'getMany',
 	},
@@ -164,6 +215,7 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
+<<<<<<< HEAD
 	{
 		displayName: 'Exclude Other Adult Household Emails (Adults Only)',
 		name: 'excludeOtherAdultHouseholdEmailsForAdultsOnly',
@@ -177,6 +229,64 @@ export const usersFields: INodeProperties[] = [
 			},
 		},
 	},
+=======
+	{	displayName: 'User ID Field',
+		name: 'user_id',
+		type: 'string',
+		required: true,
+		default: 'user_id',
+		placeholder: 'user_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['setPermissions'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack user_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+
+	{
+		displayName: 'Access Level Field',
+		name: 'access_level',
+		type: 'string',
+		required: true,
+		default: 'access_level',
+		placeholder: 'access_level',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['setPermissions'],
+			},
+		},
+		description: 'Name of the input field containing the access_level to set. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+
+	{
+		displayName: 'Granted Permissions Field',
+		name: 'granted_permissions',
+		type: 'string',
+		required: true,
+		default: 'granted_permissions',
+		placeholder: 'granted_permissions',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['setPermissions'],
+			},
+		},
+		description: 'Name of the input field containing an array of permission IDs (numbers) to grant. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+
+>>>>>>> 44105df (2026-04-08)
 	{
 		displayName: 'Position ID Field Name',
 		name: 'positionIdField',
@@ -277,7 +387,15 @@ export const usersFields: INodeProperties[] = [
 	}),
 	withShow(browserlessWsEndpointBase, {
 		resource: ['users'],
+<<<<<<< HEAD
 		operation: ['createAssignments'],
+=======
+		operation: ['getUsernames', 'getHealthFormDates', 'getTxtOptOut', 'getCounseledMeritBadges', 'getBsaId', 'getDateJoined', 'getAllergies',],
+	}),
+	withShow(browserlessWsEndpointBase, {
+		resource: ['users'],
+		operation: ['setPermissions', 'createAssignments'],
+>>>>>>> 44105df (2026-04-08)
 	}),
 
 	withShow(debugModeBase, {
@@ -290,4 +408,41 @@ export const usersFields: INodeProperties[] = [
 		resource: ['users'],
 		operation: ['createAssignments'],
 	}),
+<<<<<<< HEAD
+=======
+	{
+		displayName: 'Delay (Ms)',
+		name: 'delayMs',
+		type: 'number',
+		default: 300,
+		description: 'Delay between profile page loads to reduce flakiness and avoid hammering TroopTrack',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getBsaId', 'getDateJoined', 'getAllergies'],
+			},
+		},
+	},
+	{
+		displayName: 'Batch Size',
+		name: 'batchSize',
+		type: 'number',
+		default: 0,
+		description:
+			'Optional. Process users in chunks. 0 means no batching. Useful for large units to reduce long-running sessions.',
+		typeOptions: {
+			minValue: 0,
+		},
+		displayOptions: {
+			show: {
+				resource: ['users'],
+				operation: ['getBsaId', 'getDateJoined', 'getAllergies'],
+			},
+		},
+	},
+
+>>>>>>> 44105df (2026-04-08)
 ];

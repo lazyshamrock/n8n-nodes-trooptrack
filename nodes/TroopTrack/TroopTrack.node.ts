@@ -12,7 +12,10 @@ import { eventsOperations, eventsFields } from './descriptions/Events.descriptio
 import { genericOperations, genericFields } from './descriptions/Generic.description';
 import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description';
 import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description';
+<<<<<<< HEAD
 import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
+=======
+>>>>>>> 44105df (2026-04-08)
 import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description';
 import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description';
 import type { ResourceHandler } from './resources/types';
@@ -55,7 +58,10 @@ export class TroopTrack implements INodeType {
 				options: [
 					{ name: 'Achievement', value: 'achievementsCategory' },
 					{ name: 'Merit Badge', value: 'meritBadges' },
+<<<<<<< HEAD
 					{ name: 'Permissions', value: 'permissions' },
+=======
+>>>>>>> 44105df (2026-04-08)
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
 					{ name: 'User', value: 'users' },
 					{ name: 'Event', value: 'events' },
@@ -68,7 +74,10 @@ export class TroopTrack implements INodeType {
 			// Operations
 			...achievementsCategoryOperations,
 			...meritBadgeOperations,
+<<<<<<< HEAD
 			...permissionsOperations,
+=======
+>>>>>>> 44105df (2026-04-08)
 			...generalTroopTrackOperations,
 			...eventsOperations,
 			...mailingListsOperations,
@@ -78,7 +87,10 @@ export class TroopTrack implements INodeType {
 			// Fields
 			...achievementsCategoryFields,
 			...meritBadgeFields,
+<<<<<<< HEAD
 			...permissionsFields,
+=======
+>>>>>>> 44105df (2026-04-08)
 			...generalTroopTrackFields,
 			...eventsFields,
 			...mailingListsFields,

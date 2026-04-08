@@ -7,9 +7,12 @@ import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
 import { positionsResource } from './positions';
+<<<<<<< HEAD
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 const USER_DETAIL_CONCURRENCY = 12;
+=======
+>>>>>>> 44105df (2026-04-08)
 
 const nullIfEmptyString = (value: any) => {
 	if (typeof value === 'string' && value.trim() === '') return null;
@@ -172,6 +175,7 @@ const normalizeExtendedUser = (user: Record<string, any>) => {
 
 	return out;
 };
+<<<<<<< HEAD
 
 async function fetchDetailedUsersById(
 	ctx: IExecuteFunctions,
@@ -229,6 +233,8 @@ async function fetchDetailedUsersById(
 	await Promise.all(Array.from({ length: workerCount }, async () => worker()));
 	return out;
 }
+=======
+>>>>>>> 44105df (2026-04-08)
 
 export const usersResource: ResourceHandler = {
 	resource: 'users',
@@ -844,6 +850,7 @@ export const usersResource: ResourceHandler = {
 				const id = toNumberOrNull(u?.user_id);
 				return id == null || !excludeUserIds.has(id);
 			});
+<<<<<<< HEAD
 		}
 
 		if (operation === 'getHouseholdEmails') {
@@ -960,6 +967,8 @@ export const usersResource: ResourceHandler = {
 			});
 
 			return enriched;
+=======
+>>>>>>> 44105df (2026-04-08)
 		}
 
 		if (operation === 'getById') {

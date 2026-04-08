@@ -34,6 +34,15 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 				action: 'Get my basic info',
 			},
 			{
+<<<<<<< HEAD
+=======
+				name: 'Permissions: Get Many',
+				value: 'permissionsGetMany',
+				description: 'Scrape TroopTrack permission list (Privileges tab) from the web UI',
+				action: 'Permissions: Get TroopTrack permissions 🌐',
+			},
+			{
+>>>>>>> 44105df (2026-04-08)
 				name: 'Positions: Get Many',
 				value: 'positionsGetMany',
 				description: 'Scrape available Scout and Adult leadership positions (web UI)',
