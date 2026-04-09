@@ -1,9 +1,11 @@
+/* eslint-disable n8n-nodes-base/node-class-description-icon-not-svg */
 import type {
 	IExecuteFunctions,
 	INodeExecutionData,
 	INodeType,
 	INodeTypeDescription,
 } from 'n8n-workflow';
+import { NodeOperationError } from 'n8n-workflow';
 
 import { troopTrackRequest } from './GenericFunctions';
 
@@ -12,14 +14,7 @@ import { eventsOperations, eventsFields } from './descriptions/Events.descriptio
 import { genericOperations, genericFields } from './descriptions/Generic.description';
 import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description';
 import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description';
-<<<<<<< HEAD
-<<<<<<< HEAD
 import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
-=======
->>>>>>> 44105df (2026-04-08)
-=======
-import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
->>>>>>> 4c76758 (2026-04-08)
 import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description';
 import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description';
 import type { ResourceHandler } from './resources/types';
@@ -59,17 +54,12 @@ export class TroopTrack implements INodeType {
 				name: 'resource',
 				type: 'options',
 				noDataExpression: true,
+				// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 				options: [
 					{ name: 'Achievement', value: 'achievementsCategory' },
 					{ name: 'Merit Badge', value: 'meritBadges' },
-<<<<<<< HEAD
-<<<<<<< HEAD
+					// eslint-disable-next-line n8n-nodes-base/node-param-resource-with-plural-option
 					{ name: 'Permissions', value: 'permissions' },
-=======
->>>>>>> 44105df (2026-04-08)
-=======
-					{ name: 'Permissions', value: 'permissions' },
->>>>>>> 4c76758 (2026-04-08)
 					{ name: 'General TroopTrack', value: 'generalTroopTrack' },
 					{ name: 'User', value: 'users' },
 					{ name: 'Event', value: 'events' },
@@ -82,14 +72,8 @@ export class TroopTrack implements INodeType {
 			// Operations
 			...achievementsCategoryOperations,
 			...meritBadgeOperations,
-<<<<<<< HEAD
-<<<<<<< HEAD
 			...permissionsOperations,
-=======
->>>>>>> 44105df (2026-04-08)
-=======
 			...permissionsOperations,
->>>>>>> 4c76758 (2026-04-08)
 			...generalTroopTrackOperations,
 			...eventsOperations,
 			...mailingListsOperations,
@@ -99,14 +83,7 @@ export class TroopTrack implements INodeType {
 			// Fields
 			...achievementsCategoryFields,
 			...meritBadgeFields,
-<<<<<<< HEAD
-<<<<<<< HEAD
 			...permissionsFields,
-=======
->>>>>>> 44105df (2026-04-08)
-=======
-			...permissionsFields,
->>>>>>> 4c76758 (2026-04-08)
 			...generalTroopTrackFields,
 			...eventsFields,
 			...mailingListsFields,
@@ -183,7 +160,7 @@ export class TroopTrack implements INodeType {
 
 			const handler = resourceHandlers[resource];
 			if (!handler) {
-				throw new Error(`Unsupported resource: ${resource}`);
+				throw new NodeOperationError(this.getNode(), `Unsupported resource: ${resource}`);
 			}
 
 			const runOnceKey = `${resource}:${operation}`;

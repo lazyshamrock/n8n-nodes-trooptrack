@@ -7,20 +7,15 @@ export const eventsOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['events'] } },
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
-<<<<<<< HEAD
 			{ name: 'Attendance', value: 'attendance', description: 'POST /v1/events/{event_id}/attendance', action: 'Events: Attendance',},
 			{ name: 'Create', value: 'create', description: 'POST /v1/events', action: 'Events: Create an event',},
 			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Events: Get Details by ID',},
 			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Events: Get Many',},
 			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Events: Get Event Types',},
+			// eslint-disable-next-line n8n-nodes-base/node-param-description-miscased-id
 			{ name: 'RSVP', value: 'rsvp', description: 'PUT /v1/events/{id}/rsvp', action: 'Events: RSVP',},
-=======
-			{ name: 'Get Many', value: 'getMany', description: 'GET /v1/events', action: 'Events: Get Many',},
-			{ name: 'Get By ID', value: 'getById', description: 'GET /v1/events/{ID}', action: 'Events: Get Details by ID',},
-			{ name: 'Create', value: 'create', description: 'POST /v1/events', action: 'Events: Create an event',},
-			{ name: 'Get Types', value: 'getTypes', description: 'GET /v1/events/types', action: 'Events: Get Event Types',},
->>>>>>> 44105df (2026-04-08)
 		],
 		default: 'getMany',
 	},

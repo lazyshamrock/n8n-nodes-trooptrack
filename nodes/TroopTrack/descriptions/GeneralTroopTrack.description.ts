@@ -20,6 +20,7 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		displayOptions: { show: { resource: ['generalTroopTrack'] } },
+		// eslint-disable-next-line n8n-nodes-base/node-param-options-type-unsorted-items
 		options: [
 			{
 				name: 'Tokens: Get Privileges',
@@ -34,15 +35,12 @@ export const generalTroopTrackOperations: INodeProperties[] = [
 				action: 'Get my basic info',
 			},
 			{
-<<<<<<< HEAD
-=======
 				name: 'Permissions: Get Many',
 				value: 'permissionsGetMany',
 				description: 'Scrape TroopTrack permission list (Privileges tab) from the web UI',
 				action: 'Permissions: Get TroopTrack permissions 🌐',
 			},
 			{
->>>>>>> 44105df (2026-04-08)
 				name: 'Positions: Get Many',
 				value: 'positionsGetMany',
 				description: 'Scrape available Scout and Adult leadership positions (web UI)',
@@ -75,6 +73,7 @@ const debugModeBase: INodeProperties = {
 	name: 'debugMode',
 	type: 'boolean',
 	default: false,
+	// eslint-disable-next-line n8n-nodes-base/node-param-description-boolean-without-whether
 	description: 'When enabled, the node will throw errors and include debug details for Puppeteer',
 };
 
