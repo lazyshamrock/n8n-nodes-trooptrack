@@ -7,18 +7,9 @@ import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut';
 import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges';
 import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
 import { positionsResource } from './positions';
-<<<<<<< HEAD
-<<<<<<< HEAD
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 const USER_DETAIL_CONCURRENCY = 12;
-=======
->>>>>>> 44105df (2026-04-08)
-=======
-import type { IExecuteFunctions } from 'n8n-workflow';
-
-const USER_DETAIL_CONCURRENCY = 12;
->>>>>>> 4c76758 (2026-04-08)
 
 const nullIfEmptyString = (value: any) => {
 	if (typeof value === 'string' && value.trim() === '') return null;
@@ -181,66 +172,6 @@ const normalizeExtendedUser = (user: Record<string, any>) => {
 
 	return out;
 };
-<<<<<<< HEAD
-
-async function fetchDetailedUsersById(
-	ctx: IExecuteFunctions,
-	userIds: number[],
-	options?: {
-		debugMode?: boolean;
-		fallbackById?: Map<number, any>;
-		errorPrefix?: string;
-	},
-): Promise<Map<number, any>> {
-	const debugMode = options?.debugMode ?? false;
-	const fallbackById = options?.fallbackById;
-	const errorPrefix = options?.errorPrefix ?? 'GET /v1/users/{id} failed';
-
-	const out = new Map<number, any>();
-	const workerCount = Math.min(USER_DETAIL_CONCURRENCY, Math.max(1, userIds.length));
-	let cursor = 0;
-
-	const worker = async () => {
-		while (true) {
-			const index = cursor++;
-			if (index >= userIds.length) break;
-
-			const userId = userIds[index];
-			if (userId === undefined) break;
-			try {
-				const resp = await troopTrackRequest(ctx, 'GET', `/v1/users/${userId}`);
-				const userObj = resp?.user ?? resp;
-				if (userObj && typeof userObj === 'object') {
-					out.set(userId, { ...userObj, user_id: (userObj as any).user_id ?? userId });
-				} else if (fallbackById?.has(userId)) {
-					out.set(userId, { ...(fallbackById.get(userId) as any), user_id: userId });
-				} else {
-					out.set(userId, { user_id: userId });
-				}
-			} catch (e) {
-				if (debugMode) {
-					const msg = e instanceof Error ? e.message : String(e);
-					throw new Error(`${errorPrefix}: GET /v1/users/${userId} failed: ${msg}`);
-				}
-
-				if (fallbackById?.has(userId)) {
-					out.set(userId, { ...(fallbackById.get(userId) as any), user_id: userId });
-				} else {
-					out.set(userId, { user_id: userId });
-				}
-			}
-		}
-	};
-
-	if (workerCount === 0) {
-		return out;
-	}
-
-	await Promise.all(Array.from({ length: workerCount }, async () => worker()));
-	return out;
-}
-=======
->>>>>>> 44105df (2026-04-08)
 
 async function fetchDetailedUsersById(
 	ctx: IExecuteFunctions,
@@ -913,7 +844,6 @@ export const usersResource: ResourceHandler = {
 				const id = toNumberOrNull(u?.user_id);
 				return id == null || !excludeUserIds.has(id);
 			});
-<<<<<<< HEAD
 		}
 
 		if (operation === 'getHouseholdEmails') {
@@ -1030,8 +960,6 @@ export const usersResource: ResourceHandler = {
 			});
 
 			return enriched;
-=======
->>>>>>> 44105df (2026-04-08)
 		}
 
 		if (operation === 'getHouseholdEmails') {
