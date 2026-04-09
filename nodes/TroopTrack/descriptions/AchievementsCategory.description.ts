@@ -52,6 +52,12 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 				description: 'GET /v1/user_achievements/{ID}',
 				action: 'User Achievements: Get a user achievement by id',
 			},
+			{
+				name: 'User Achievement: Mark Completed',
+				value: 'userAchievementMarkCompleted',
+				description: 'POST /v1/user_achievements/{ID}',
+				action: 'User Achievement: Mark a user achievement completed',
+			},
 		],
 		default: 'achievementsGetMany',
 	},
@@ -158,6 +164,60 @@ export const achievementsCategoryFields: INodeProperties[] = [
 				operation: ['achievementsStartOther'],
 			},
 		},
+	},
+	{
+		displayName: 'User Achievement ID Field',
+		name: 'user_achievement_id',
+		type: 'string',
+		required: true,
+		default: 'user_achievement_id',
+		placeholder: 'user_achievement_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack user_achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Award Type ID Field',
+		name: 'award_type_id',
+		type: 'string',
+		required: true,
+		default: 'award_type_id',
+		placeholder: 'award_type_id',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Name of the input field containing the target TroopTrack award_type_id. You can drag a field from the input sidebar. Only the field name will be used.',
+	},
+	{
+		displayName: 'Completed On Field',
+		name: 'completed_on',
+		type: 'string',
+		required: true,
+		default: 'completed_on',
+		placeholder: 'completed_on',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Name of the input field containing the completion date to send to TroopTrack. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 	{
 		displayName: 'Achievement ID',

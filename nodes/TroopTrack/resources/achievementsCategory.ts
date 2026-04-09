@@ -28,6 +28,9 @@ export const achievementsCategoryResource: ResourceHandler = {
 		if (operation === 'userAchievementsGetById') {
 			return await userAchievementsResource.execute(ctx, items, itemIndex, 'getById');
 		}
+		if (operation === 'userAchievementMarkCompleted') {
+			return await userAchievementsResource.execute(ctx, items, itemIndex, 'markCompleted');
+		}
 
 		throw new Error(`Unsupported achievements category operation: ${operation} (index ${itemIndex})`);
 	},
