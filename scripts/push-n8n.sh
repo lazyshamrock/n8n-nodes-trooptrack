@@ -29,8 +29,12 @@ mkdir -p "${BUILDS_DIR}"
 # How many local tgz files to keep
 BUILDS_KEEP_COUNT="${BUILDS_KEEP_COUNT:-3}"
 
-# Where n8n loads custom extensions from (must match N8N_CUSTOM_EXTENSIONS)
-CONTAINER_INSTALL_DIR="${CONTAINER_INSTALL_DIR:-/home/node/.n8n/custom}"
+# Where n8n may load extra packages from.
+# Some installs use the community-packages folder (`/home/node/.n8n/nodes`),
+# while others use `N8N_CUSTOM_EXTENSIONS` (`/home/node/.n8n/custom`).
+# We detect what exists in the running container and update the active location.
+CONTAINER_COMMUNITY_DIR="${CONTAINER_COMMUNITY_DIR:-/home/node/.n8n/nodes}"
+CONTAINER_CUSTOM_DIR="${CONTAINER_CUSTOM_DIR:-/home/node/.n8n/custom}"
 
 # Writable staging dir inside the container for the packed tgz
 # (Your /opt mount is read-only per compose: ...:/opt/n8n-nodes-trooptrack:ro)
@@ -96,19 +100,55 @@ echo "[INFO] Container tgz path: ${CONTAINER_TGZ_PATH}"
 docker exec -it "${N8N_CONTAINER_NAME}" sh -lc "ls -la '${CONTAINER_TGZ_PATH}'"
 
 echo
-echo "[STEP] Install tarball into custom extensions dir: ${CONTAINER_INSTALL_DIR}"
+echo "[STEP] Install tarball into n8n package directories"
 docker exec -it "${N8N_CONTAINER_NAME}" sh -lc "
   set -e;
-  echo \"N8N_CUSTOM_EXTENSIONS=\$N8N_CUSTOM_EXTENSIONS\";
-  cd '${CONTAINER_INSTALL_DIR}';
+  ensure_pkg_dir() {
+    target_dir=\"\$1\";
+    pkg_name=\"\$2\";
+    mkdir -p \"\${target_dir}\";
+    if [ ! -f \"\${target_dir}/package.json\" ]; then
+      printf '{\n  \"name\": \"%s\",\n  \"version\": \"1.0.0\",\n  \"type\": \"commonjs\"\n}\n' \"\${pkg_name}\" > \"\${target_dir}/package.json\";
+    fi
+  }
 
-  # Force clean reinstall to avoid caching weirdness
-  rm -rf node_modules/'${PKG_NAME}';
+  install_into_dir() {
+    target_dir=\"\$1\";
+    label=\"\$2\";
+    ensure_pkg_dir \"\${target_dir}\" \"\${label}\";
+    echo \"Installing into \${target_dir}\";
+    cd \"\${target_dir}\";
+    rm -rf node_modules/'${PKG_NAME}';
+    npm install --no-fund --no-audit '${CONTAINER_TGZ_PATH}';
+    node -p \"require('./node_modules/${PKG_NAME}/package.json').version\"
+  }
 
-  npm install --no-fund --no-audit '${CONTAINER_TGZ_PATH}';
+  echo \"N8N_CUSTOM_EXTENSIONS=\${N8N_CUSTOM_EXTENSIONS:-}\";
 
-  # Confirm where Node resolves it from
-  node -p \"require.resolve('${PKG_NAME}/package.json')\"
+  INSTALL_CUSTOM=false
+  INSTALL_COMMUNITY=false
+
+  if [ -f '${CONTAINER_COMMUNITY_DIR}/package.json' ]; then
+    INSTALL_COMMUNITY=true
+  fi
+
+  if [ -f '${CONTAINER_CUSTOM_DIR}/package.json' ] || [ \"\${N8N_CUSTOM_EXTENSIONS:-}\" = '${CONTAINER_CUSTOM_DIR}' ]; then
+    INSTALL_CUSTOM=true
+  fi
+
+  # If neither location exists yet, prefer custom because that preserves
+  # the legacy CUSTOM.<nodeName> workflow type used in this environment.
+  if [ \"\${INSTALL_CUSTOM}\" = false ] && [ \"\${INSTALL_COMMUNITY}\" = false ]; then
+    INSTALL_CUSTOM=true
+  fi
+
+  if [ \"\${INSTALL_CUSTOM}\" = true ]; then
+    install_into_dir '${CONTAINER_CUSTOM_DIR}' 'custom'
+  fi
+
+  if [ \"\${INSTALL_COMMUNITY}\" = true ]; then
+    install_into_dir '${CONTAINER_COMMUNITY_DIR}' 'nodes'
+  fi
 "
 
 echo

@@ -1,12 +1,12 @@
-import type { ResourceHandler } from './types';
+import type { ResourceHandler } from './types.js';
 import { promises as fs } from 'fs';
 import os from 'os';
 import path from 'path';
 import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
-import { troopTrackRequest } from '../GenericFunctions';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
-import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge';
-import { startTroopTrackOtherAchievements } from '../puppeteer/scrapers/achievements.startOther';
+import { troopTrackRequest } from '../GenericFunctions.js';
+import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge.js';
+import { startTroopTrackOtherAchievements } from '../puppeteer/scrapers/achievements.startOther.js';
 
 type BlueCardInput = {
 	user_id: number;
@@ -1470,9 +1470,6 @@ export const achievementsResource: ResourceHandler = {
 
 					const output: Record<string, any> = {
 						...row,
-						user_id: userId,
-						award_type_id: awardTypeId,
-						achievement_id: achievementId,
 						user_achievement_id: userAchievementId,
 					};
 
@@ -1488,9 +1485,6 @@ export const achievementsResource: ResourceHandler = {
 				const msg = e instanceof Error ? e.message : String(e);
 				return inputRows.map((row) => ({
 					...row,
-					user_id: toScalarFieldValue(readMapped(row, userIdFieldName)),
-					award_type_id: toScalarFieldValue(readMapped(row, awardTypeIdFieldName)),
-					achievement_id: toScalarFieldValue(readMapped(row, achievementIdFieldName)),
 					user_achievement_id: null,
 					errors: [msg],
 				}));

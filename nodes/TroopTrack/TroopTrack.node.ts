@@ -7,31 +7,31 @@ import type {
 } from 'n8n-workflow';
 import { NodeOperationError } from 'n8n-workflow';
 
-import { troopTrackRequest } from './GenericFunctions';
+import { troopTrackRequest } from './GenericFunctions.js';
 
-import { usersOperations, usersFields } from './descriptions/Users.description';
-import { eventsOperations, eventsFields } from './descriptions/Events.description';
-import { genericOperations, genericFields } from './descriptions/Generic.description';
-import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description';
-import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description';
-import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description';
-import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description';
-import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description';
-import type { ResourceHandler } from './resources/types';
-import { tokensResource } from './resources/tokens';
-import { usersResource } from './resources/users';
-import { permissionsResource } from './resources/permissions';
-import { positionsResource } from './resources/positions';
-import { generalTroopTrackResource } from './resources/generalTroopTrack';
-import { eventsResource } from './resources/events';
-import { achievementsResource } from './resources/achievements';
-import { achievementsCategoryResource } from './resources/achievementsCategory';
-import { awardTypesResource } from './resources/awardTypes';
-import { mailingListsResource } from './resources/mailingLists';
-import { userAchievementsResource } from './resources/userAchievements';
-import { patrolsResource } from './resources/patrols';
-import { genericResource } from './resources/generic';
-import { meritBadgesResource } from './resources/meritBadges';
+import { usersOperations, usersFields } from './descriptions/Users.description.js';
+import { eventsOperations, eventsFields } from './descriptions/Events.description.js';
+import { genericOperations, genericFields } from './descriptions/Generic.description.js';
+import { achievementsCategoryOperations, achievementsCategoryFields } from './descriptions/AchievementsCategory.description.js';
+import { meritBadgeOperations, meritBadgeFields } from './descriptions/MeritBadge.description.js';
+import { permissionsOperations, permissionsFields } from './descriptions/Permissions.description.js';
+import { mailingListsOperations, mailingListsFields } from './descriptions/Communication.description.js';
+import { generalTroopTrackOperations, generalTroopTrackFields } from './descriptions/GeneralTroopTrack.description.js';
+import type { ResourceHandler } from './resources/types.js';
+import { tokensResource } from './resources/tokens.js';
+import { usersResource } from './resources/users.js';
+import { permissionsResource } from './resources/permissions.js';
+import { positionsResource } from './resources/positions.js';
+import { generalTroopTrackResource } from './resources/generalTroopTrack.js';
+import { eventsResource } from './resources/events.js';
+import { achievementsResource } from './resources/achievements.js';
+import { achievementsCategoryResource } from './resources/achievementsCategory.js';
+import { awardTypesResource } from './resources/awardTypes.js';
+import { mailingListsResource } from './resources/mailingLists.js';
+import { userAchievementsResource } from './resources/userAchievements.js';
+import { patrolsResource } from './resources/patrols.js';
+import { genericResource } from './resources/generic.js';
+import { meritBadgesResource } from './resources/meritBadges.js';
 
 export class TroopTrack implements INodeType {
 	description: INodeTypeDescription = {
@@ -73,7 +73,6 @@ export class TroopTrack implements INodeType {
 			...achievementsCategoryOperations,
 			...meritBadgeOperations,
 			...permissionsOperations,
-			...permissionsOperations,
 			...generalTroopTrackOperations,
 			...eventsOperations,
 			...mailingListsOperations,
@@ -95,7 +94,7 @@ export class TroopTrack implements INodeType {
 	methods = {
 		loadOptions: {
 			async getAwardTypes(this: import('n8n-workflow').ILoadOptionsFunctions) {
-				const { troopTrackRequest } = await import('./GenericFunctions');
+				const { troopTrackRequest } = await import('./GenericFunctions.js');
 
 				// Use the dedicated endpoint. It is the most consistent source for award types.
 				const resp = await troopTrackRequest(this, 'GET', '/v1/award_types');

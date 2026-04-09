@@ -1,8 +1,8 @@
-import type { ResourceHandler } from './types';
-import { troopTrackRequest } from '../GenericFunctions';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
-import { scrapePermissions } from '../puppeteer/scrapers/permissions';
-import { setTroopTrackUserPermissions } from '../puppeteer/scrapers/permissionsSet';
+import type { ResourceHandler } from './types.js';
+import { troopTrackRequest } from '../GenericFunctions.js';
+import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { scrapePermissions } from '../puppeteer/scrapers/permissions.js';
+import { setTroopTrackUserPermissions } from '../puppeteer/scrapers/permissionsSet.js';
 
 function safeStringify(value: unknown, maxLen = 800): string {
 	try {

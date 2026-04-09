@@ -1,2 +1,2 @@
-export * from './nodes/TroopTrack/TroopTrack.node';
-export * from './credentials/TroopTrackApi.credentials';
+export * from './nodes/TroopTrack/TroopTrack.node.js';
+export * from './credentials/TroopTrackApi.credentials.js';

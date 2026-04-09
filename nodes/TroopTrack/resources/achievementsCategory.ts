@@ -1,7 +1,7 @@
-import type { ResourceHandler } from './types';
-import { achievementsResource } from './achievements';
-import { awardTypesResource } from './awardTypes';
-import { userAchievementsResource } from './userAchievements';
+import type { ResourceHandler } from './types.js';
+import { achievementsResource } from './achievements.js';
+import { awardTypesResource } from './awardTypes.js';
+import { userAchievementsResource } from './userAchievements.js';
 
 export const achievementsCategoryResource: ResourceHandler = {
 	resource: 'achievementsCategory',

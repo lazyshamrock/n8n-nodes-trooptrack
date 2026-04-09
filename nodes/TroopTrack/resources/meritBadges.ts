@@ -1,5 +1,5 @@
-import type { ResourceHandler } from './types';
-import { achievementsResource } from './achievements';
+import type { ResourceHandler } from './types.js';
+import { achievementsResource } from './achievements.js';
 
 export const meritBadgesResource: ResourceHandler = {
 	resource: 'meritBadges',

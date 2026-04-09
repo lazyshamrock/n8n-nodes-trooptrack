@@ -1,5 +1,5 @@
-import type { ResourceHandler } from './types';
-import { troopTrackRequest } from '../GenericFunctions';
+import type { ResourceHandler } from './types.js';
+import { troopTrackRequest } from '../GenericFunctions.js';
 
 export const tokensResource: ResourceHandler = {
 	resource: 'tokens',

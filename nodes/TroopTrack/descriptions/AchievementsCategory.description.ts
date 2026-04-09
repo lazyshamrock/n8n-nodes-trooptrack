@@ -1,3 +1,5 @@
+/* eslint-disable n8n-nodes-base/node-param-description-miscased-id */
+/* eslint-disable n8n-nodes-base/node-param-options-type-unsorted-items */
 import type { INodeProperties } from 'n8n-workflow';
 
 export const achievementsCategoryOperations: INodeProperties[] = [
@@ -9,10 +11,10 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 		displayOptions: { show: { resource: ['achievementsCategory'] } },
 		options: [
 			{
-				name: 'Achievements: Start Other Achievement',
+				name: 'Achievements: Start Other Achievement 🌐',
 				value: 'achievementsStartOther',
-				description: 'Start other achievements for each user_id/award_type_id/achievement_id row (web UI)',
-				action: 'Start other achievements in troop track web ui',
+				description: 'Updates TroopTrack via the web UI to indicate that members have started an OTHER achievement',
+				action: 'Start Other Achievement (Non Rank / Merit Badge)',
 			},
 			{
 				name: 'Achievements: Get Many',
@@ -24,7 +26,7 @@ export const achievementsCategoryOperations: INodeProperties[] = [
 				name: 'Achievements: Get By ID',
 				value: 'achievementsGetById',
 				description: 'GET /v1/achievements/{ID} (requires award_type_id)',
-				action: 'Get a troop track achievement by id',
+				action: 'Get a TroopTrack achievement by ID',
 			},
 			{
 				name: 'Award Types: Get Many',

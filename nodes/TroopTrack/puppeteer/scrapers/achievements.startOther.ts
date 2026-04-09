@@ -51,19 +51,112 @@ function buildStartOtherAchievementUrl(ttSubDomain: string, userId: string | num
 }
 
 async function submitOtherAchievement(page: any, stepDelayMs: number): Promise<void> {
+	const formSelector = '#new_user_achievement';
 	const submitSelector =
-		'input[type="submit"][name="commit"][value="Save"], button[type="submit"][name="commit"][value="Save"]';
+		`${formSelector} input[type="submit"][name="commit"][value="Save"], ${formSelector} button[type="submit"][name="commit"][value="Save"]`;
 
 	await page.waitForSelector(submitSelector, { visible: true, timeout: 20000 });
 
+	const submitResponsePromise = page
+		.waitForResponse(
+			(res: any) =>
+				res?.request?.().method?.() === 'POST' &&
+				String(res?.url?.() ?? '').includes('/user_achievements'),
+			{ timeout: 20000 },
+		)
+		.catch(() => null);
 	const navPromise = page
 		.waitForNavigation({ waitUntil: 'networkidle2', timeout: 20000 })
 		.catch(() => null);
 
 	await page.click(submitSelector);
+	await submitResponsePromise;
 	await navPromise;
 
 	if (stepDelayMs > 0) await delay(stepDelayMs);
+}
+
+async function expandAwardTypeSection(
+	page: any,
+	awardTypeId: string | number,
+	stepDelayMs: number,
+): Promise<void> {
+	const sectionId = `for_${awardTypeId}`;
+	const sectionSelector = `#${sectionId}`;
+	const toggleSelector = `[data-toggle="collapse"][href="#${sectionId}"]`;
+
+	const sectionExists = await page.$(sectionSelector);
+	if (!sectionExists) {
+		throw new Error(`Award type section ${awardTypeId} not found`);
+	}
+
+	const isExpanded = async () =>
+		await page.evaluate((sel: string) => {
+			const doc = (globalThis as any).document as any;
+			const el = doc ? doc.querySelector(sel) : null;
+			if (!el) return false;
+			return el.classList?.contains('show') || el.classList?.contains('in') || false;
+		}, sectionSelector);
+
+	if (await isExpanded()) {
+		return;
+	}
+
+	await page.waitForSelector(toggleSelector, { visible: true, timeout: 10000 });
+	await page.evaluate((sel: string) => {
+		const doc = (globalThis as any).document as any;
+		const el = doc ? doc.querySelector(sel) : null;
+		if (!el) return;
+		el.click();
+	}, toggleSelector);
+
+	try {
+		await page.waitForFunction(
+			(sel: string) => {
+				const doc = (globalThis as any).document as any;
+				const el = doc ? doc.querySelector(sel) : null;
+				if (!el) return false;
+				return el.classList?.contains('show') || el.classList?.contains('in') || false;
+			},
+			{ timeout: 10000 },
+			sectionSelector,
+		);
+	} catch {
+		// Some pages update visibility without Bootstrap classes; continue after a short pause.
+	}
+
+	if (stepDelayMs > 0) await delay(stepDelayMs);
+}
+
+async function setCheckboxChecked(page: any, selector: string): Promise<boolean> {
+	return await page.evaluate((sel: string) => {
+		const g = globalThis as any;
+		const doc = g.document as any;
+		const EventCtor = g.Event;
+		const el = doc ? doc.querySelector(sel) : null;
+		if (!el) return false;
+
+		if (typeof el.scrollIntoView === 'function') {
+			el.scrollIntoView({ block: 'center', inline: 'center' });
+		}
+
+		if (!el.checked) {
+			if (typeof el.click === 'function') {
+				el.click();
+			}
+		}
+
+		if (!el.checked) {
+			el.checked = true;
+		}
+
+		if (EventCtor) {
+			el.dispatchEvent(new EventCtor('input', { bubbles: true }));
+			el.dispatchEvent(new EventCtor('change', { bubbles: true }));
+		}
+
+		return Boolean(el.checked);
+	}, selector);
 }
 
 async function startOneOtherAchievement(
@@ -110,6 +203,8 @@ async function startOneOtherAchievement(
 		await page.goto(url, { waitUntil: 'networkidle2', timeout: 30000 });
 		if (stepDelayMs > 0) await delay(stepDelayMs);
 
+		await expandAwardTypeSection(page, awardTypeId as any, stepDelayMs);
+
 		try {
 			await page.waitForSelector(selector, { visible: true, timeout: 20000 });
 		} catch {
@@ -118,17 +213,15 @@ async function startOneOtherAchievement(
 
 		const already = await page.$eval(selector, (el: any) => Boolean(el?.checked));
 		if (!already) {
-			await page.click(selector);
-			await page.evaluate((sel: string) => {
-				const g = globalThis as any;
-				const doc = g.document as any;
-				const EventCtor = g.Event;
-				const el = doc ? doc.querySelector(sel) : null;
-				if (!el) return;
-				if (EventCtor) {
-					el.dispatchEvent(new EventCtor('change', { bubbles: true }));
-				}
-			}, selector);
+			const checked = await setCheckboxChecked(page, selector);
+			if (!checked) {
+				throw new Error(`Achievement ${achievementId} could not be selected for user_id ${userId}`);
+			}
+		}
+
+		const isCheckedBeforeSubmit = await page.$eval(selector, (el: any) => Boolean(el?.checked));
+		if (!isCheckedBeforeSubmit) {
+			throw new Error(`Achievement ${achievementId} was not checked before save for user_id ${userId}`);
 		}
 
 		if (stepDelayMs > 0) await delay(stepDelayMs);

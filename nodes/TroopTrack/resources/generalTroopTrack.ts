@@ -1,7 +1,7 @@
-import type { ResourceHandler } from './types';
-import { tokensResource } from './tokens';
-import { positionsResource } from './positions';
-import { patrolsResource } from './patrols';
+import type { ResourceHandler } from './types.js';
+import { tokensResource } from './tokens.js';
+import { positionsResource } from './positions.js';
+import { patrolsResource } from './patrols.js';
 
 export const generalTroopTrackResource: ResourceHandler = {
 	resource: 'generalTroopTrack',

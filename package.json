@@ -1,6 +1,6 @@
 {
   "name": "n8n-nodes-trooptrack",
-  "version": "1.1.12",
+  "version": "1.1.22",
   "description": "n8n community node for the TroopTrack API",
   "license": "MIT",
   "author": "",

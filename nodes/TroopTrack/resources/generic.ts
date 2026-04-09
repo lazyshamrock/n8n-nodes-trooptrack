@@ -1,6 +1,6 @@
-import type { ResourceHandler } from './types';
+import type { ResourceHandler } from './types.js';
 import type { IHttpRequestMethods } from 'n8n-workflow';
-import { troopTrackRequest } from '../GenericFunctions';
+import { troopTrackRequest } from '../GenericFunctions.js';
 
 export const genericResource: ResourceHandler = {
 	resource: 'generic',

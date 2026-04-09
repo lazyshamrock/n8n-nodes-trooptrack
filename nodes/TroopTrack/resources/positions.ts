@@ -1,7 +1,7 @@
-import type { ResourceHandler } from './types';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
-import { scrapePositions } from '../puppeteer/scrapers/positions';
-import { createPositionAssignments } from '../puppeteer/scrapers/positions.createAssignments';
+import type { ResourceHandler } from './types.js';
+import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { scrapePositions } from '../puppeteer/scrapers/positions.js';
+import { createPositionAssignments } from '../puppeteer/scrapers/positions.createAssignments.js';
 
 export const positionsResource: ResourceHandler = {
 	resource: 'positions',

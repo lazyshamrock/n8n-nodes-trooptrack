@@ -1,12 +1,12 @@
-import type { ResourceHandler } from './types';
-import { troopTrackRequest } from '../GenericFunctions';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession';
-import { scrapeTroopTrackUsernames } from '../puppeteer/scrapers/usernames';
-import { scrapeTroopTrackHealthFormDates } from '../puppeteer/scrapers/healthForms';
-import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut';
-import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges';
-import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields';
-import { positionsResource } from './positions';
+import type { ResourceHandler } from './types.js';
+import { troopTrackRequest } from '../GenericFunctions.js';
+import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { scrapeTroopTrackUsernames } from '../puppeteer/scrapers/usernames.js';
+import { scrapeTroopTrackHealthFormDates } from '../puppeteer/scrapers/healthForms.js';
+import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut.js';
+import { scrapeTroopTrackCounseledMeritBadges } from '../puppeteer/scrapers/counseledMeritBadges.js';
+import { scrapeTroopTrackProfileFields } from '../puppeteer/scrapers/profileFields.js';
+import { positionsResource } from './positions.js';
 import type { IExecuteFunctions } from 'n8n-workflow';
 
 const USER_DETAIL_CONCURRENCY = 12;
