@@ -111,6 +111,7 @@ export const userAchievementsResource: ResourceHandler = {
 							award_type_id: awardTypeId,
 							achievement: {
 								completed_on: completedOn,
+								percent_complete: 100,
 							},
 						},
 					);
