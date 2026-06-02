@@ -927,7 +927,7 @@ export const achievementsResource: ResourceHandler = {
 						})
 						.catch(() => null);
 
-					const pdfResponsePromise = waitForPdfResponseOnBrowser(page.browser(), 45000);
+					const pdfResponsePromise = waitForPdfResponseOnBrowser(page.browser(), 45000).catch(() => null);
 					const newTabPdfPromise = waitForPdfInNewTab(page, 45000).catch(() => null);
 
 					let pdfBytes: Uint8Array | null = null;
