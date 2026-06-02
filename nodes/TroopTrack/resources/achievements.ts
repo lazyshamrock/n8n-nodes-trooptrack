@@ -50,6 +50,28 @@ const toScalarFieldValue = (value: unknown): string | number | null => {
 	return null;
 };
 
+const errorToMessage = (error: unknown): string => {
+	if (error instanceof Error) return error.message;
+	if (typeof error === 'string') return error;
+	if (error && typeof error === 'object') {
+		const maybeMessage = (error as { message?: unknown }).message;
+		if (typeof maybeMessage === 'string') return maybeMessage;
+		if (maybeMessage != null) return errorToMessage(maybeMessage);
+
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return String(error);
+		}
+	}
+	return String(error);
+};
+
+const normalizeErrors = (errors: unknown): string[] => {
+	if (!Array.isArray(errors)) return ['Unknown error'];
+	return errors.map((error) => errorToMessage(error));
+};
+
 const collectNestedRecords = (value: any): Record<string, any>[] => {
 	if (value == null) return [];
 	if (Array.isArray(value)) {
@@ -446,7 +468,9 @@ const wrapTextToWidth = (
 		const words = paragraph.trim().split(/\s+/).filter(Boolean);
 
 		if (words.length === 0) {
-			wrapped.push('');
+			if (wrapped.length === 0 || wrapped[wrapped.length - 1] !== '') {
+				wrapped.push('');
+			}
 			continue;
 		}
 
@@ -483,10 +507,6 @@ const wrapTextToWidth = (
 
 		if (line) {
 			wrapped.push(line);
-		}
-
-		if (pIndex < paragraphs.length - 1) {
-			wrapped.push('');
 		}
 	}
 
@@ -1331,7 +1351,7 @@ export const achievementsResource: ResourceHandler = {
 					if (typeof entry?.index === 'number') {
 						resultByIndex.set(entry.index, {
 							mb_added: Boolean(entry?.mb_added),
-							errors: Array.isArray(entry?.errors) ? entry.errors : ['Unknown error'],
+							errors: normalizeErrors(entry?.errors),
 						});
 					}
 				}

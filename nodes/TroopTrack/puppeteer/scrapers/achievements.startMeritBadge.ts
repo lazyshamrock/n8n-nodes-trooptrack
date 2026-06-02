@@ -57,6 +57,23 @@ function readMapped(item: Record<string, any>, field: string): unknown {
 	return cur;
 }
 
+function errorToMessage(error: unknown): string {
+	if (error instanceof Error) return error.message;
+	if (typeof error === 'string') return error;
+	if (error && typeof error === 'object') {
+		const maybeMessage = (error as { message?: unknown }).message;
+		if (typeof maybeMessage === 'string') return maybeMessage;
+		if (maybeMessage != null) return errorToMessage(maybeMessage);
+
+		try {
+			return JSON.stringify(error);
+		} catch {
+			return String(error);
+		}
+	}
+	return String(error);
+}
+
 async function clickByText(page: any, selector: string, text: string): Promise<void> {
 	const ok = await page.evaluate(
 		(sel: string, label: string) => {
@@ -175,7 +192,7 @@ async function startOneMeritBadge(
 		result.mb_added = true;
 		return result;
 	} catch (e: any) {
-		const msg = e?.message ? String(e.message) : String(e);
+		const msg = errorToMessage(e);
 		if (opts.debugMode) throw e;
 		result.errors.push(msg);
 		return result;
