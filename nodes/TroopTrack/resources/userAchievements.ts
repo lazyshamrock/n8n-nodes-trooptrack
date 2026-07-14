@@ -135,7 +135,7 @@ export const userAchievementsResource: ResourceHandler = {
 		if (operation === 'markCompleted') {
 			const items = _items;
 			const userAchievementIdFieldName = ctx.getNodeParameter('user_achievement_id', 0) as string;
-			const awardTypeIdFieldName = ctx.getNodeParameter('award_type_id', 0) as string;
+			const awardTypeId = normalizeId(ctx.getNodeParameter('award_type_id', 0));
 			const completedOnFieldName = ctx.getNodeParameter('completed_on', 0) as string;
 			const frontFieldName = (ctx.getNodeParameter('blue_card_front_field', 0, '') as string) || '';
 			const backFieldName = (ctx.getNodeParameter('blue_card_back_field', 0, '') as string) || '';
@@ -198,13 +198,10 @@ export const userAchievementsResource: ResourceHandler = {
 			for (const row of inputRows) {
 				const userAchievementIdValue =
 					toScalarFieldValue(readMapped(row, userAchievementIdFieldName)) ?? null;
-				const awardTypeIdValue =
-					toScalarFieldValue(readMapped(row, awardTypeIdFieldName)) ?? null;
 				const completedOnValue =
 					toScalarFieldValue(readMapped(row, completedOnFieldName)) ?? null;
 
 				const userAchievementId = normalizeId(userAchievementIdValue);
-				const awardTypeId = normalizeId(awardTypeIdValue);
 				const completedOn =
 					typeof completedOnValue === 'number'
 						? String(completedOnValue)
@@ -217,7 +214,7 @@ export const userAchievementsResource: ResourceHandler = {
 					errors.push(`Invalid ${userAchievementIdFieldName}`);
 				}
 				if (awardTypeId == null) {
-					errors.push(`Invalid ${awardTypeIdFieldName}`);
+					errors.push('Invalid award type selected');
 				}
 				if (completedOn == null || completedOn.trim() === '') {
 					errors.push(`Invalid ${completedOnFieldName}`);

@@ -184,14 +184,14 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		description: 'Name of the input field containing the target TroopTrack user_achievement_id. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 	{
-		displayName: 'Award Type ID Field',
+		displayName: 'Award Type Name or ID',
 		name: 'award_type_id',
-		type: 'string',
+		type: 'options',
 		required: true,
-		default: 'award_type_id',
-		placeholder: 'award_type_id',
+		default: 999999999,
+		description: 'The award type to complete for every input row. Merit Badge is 999999999. Choose from the list, or specify an ID using an <a href="https://docs.n8n.io/code/expressions/">expression</a>.',
 		typeOptions: {
-			requiresDataPath: true,
+			loadOptionsMethod: 'getAwardTypes',
 		},
 		displayOptions: {
 			show: {
@@ -199,7 +199,6 @@ export const achievementsCategoryFields: INodeProperties[] = [
 				operation: ['userAchievementMarkCompleted'],
 			},
 		},
-		description: 'Name of the input field containing the target TroopTrack award_type_id. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 	{
 		displayName: 'Completed On Field',
