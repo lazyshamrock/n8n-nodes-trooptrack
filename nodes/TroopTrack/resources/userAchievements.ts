@@ -1,3 +1,4 @@
+import type { IHttpRequestOptions } from 'n8n-workflow';
 import type { ResourceHandler } from './types.js';
 import { troopTrackRequest } from '../GenericFunctions.js';
 
@@ -24,6 +25,82 @@ const readMapped = (item: Record<string, any>, field: string): unknown => {
 const toScalarFieldValue = (value: unknown): string | number | null => {
 	if (typeof value === 'string' || typeof value === 'number') return value;
 	return null;
+};
+
+const looksAbsoluteUrl = (u: string): boolean => /^https?:\/\//i.test(u);
+
+const joinBase = (u: string, baseUrl: string): string => {
+	if (looksAbsoluteUrl(u)) return u;
+	if (!baseUrl) return u;
+	return `${baseUrl.replace(/\/+$/, '')}/${u.replace(/^\/+/, '')}`;
+};
+
+// A mapped image field can arrive as a plain URL string, a JSON-encoded attachment,
+// a NoCoDB attachment object, or an array of such. Pull the first usable URL out.
+const resolveAttachmentUrl = (value: unknown, baseUrl: string): string | null => {
+	if (value == null) return null;
+
+	if (typeof value === 'string') {
+		const s = value.trim();
+		if (s === '') return null;
+		if (s.startsWith('[') || s.startsWith('{')) {
+			try {
+				return resolveAttachmentUrl(JSON.parse(s), baseUrl);
+			} catch {
+				// not JSON, treat as a bare URL
+			}
+		}
+		return joinBase(s, baseUrl);
+	}
+
+	if (Array.isArray(value)) {
+		for (const el of value) {
+			const u = resolveAttachmentUrl(el, baseUrl);
+			if (u) return u;
+		}
+		return null;
+	}
+
+	if (typeof value === 'object') {
+		const o = value as Record<string, any>;
+		const candidate = o.signedUrl ?? o.signedPath ?? o.url ?? o.path ?? null;
+		if (typeof candidate === 'string' && candidate.trim() !== '') {
+			return joinBase(candidate.trim(), baseUrl);
+		}
+	}
+
+	return null;
+};
+
+const hasValue = (value: unknown): boolean => {
+	if (value == null) return false;
+	if (typeof value === 'string') return value.trim() !== '';
+	if (Array.isArray(value)) return value.length > 0;
+	return true;
+};
+
+const CONTENT_TYPE_EXT: Record<string, string> = {
+	'image/jpeg': 'jpg',
+	'image/jpg': 'jpg',
+	'image/png': 'png',
+	'image/gif': 'gif',
+	'image/webp': 'webp',
+	'image/heic': 'heic',
+	'application/pdf': 'pdf',
+};
+
+const extFromContentType = (ct: unknown): string | null => {
+	if (typeof ct !== 'string' || ct.trim() === '') return null;
+	const t = (ct.split(';')[0] ?? '').trim().toLowerCase();
+	return CONTENT_TYPE_EXT[t] ?? null;
+};
+
+const extFromUrl = (url: string): string | null => {
+	const clean = (url.split('?')[0] ?? '').split('#')[0] ?? '';
+	const m = clean.match(/\.([a-zA-Z0-9]{2,5})$/);
+	const ext = m?.[1]?.toLowerCase();
+	if (!ext) return null;
+	return ext === 'jpeg' ? 'jpg' : ext;
 };
 
 export const userAchievementsResource: ResourceHandler = {
@@ -60,6 +137,60 @@ export const userAchievementsResource: ResourceHandler = {
 			const userAchievementIdFieldName = ctx.getNodeParameter('user_achievement_id', 0) as string;
 			const awardTypeIdFieldName = ctx.getNodeParameter('award_type_id', 0) as string;
 			const completedOnFieldName = ctx.getNodeParameter('completed_on', 0) as string;
+			const frontFieldName = (ctx.getNodeParameter('blue_card_front_field', 0, '') as string) || '';
+			const backFieldName = (ctx.getNodeParameter('blue_card_back_field', 0, '') as string) || '';
+			const imagesTypeOverride = (
+				(ctx.getNodeParameter('award_card_images_type', 0, '') as string) || ''
+			)
+				.replace(/^\./, '')
+				.trim()
+				.toLowerCase();
+			const attachmentBaseUrl = (ctx.getNodeParameter('attachment_base_url', 0, '') as string) || '';
+
+			// Fetch an image URL and return its base64 content plus a best-guess extension.
+			const fetchImage = async (url: string): Promise<{ base64: string; ext: string | null }> => {
+				const options: IHttpRequestOptions = {
+					method: 'GET',
+					url,
+					encoding: 'arraybuffer',
+					returnFullResponse: true,
+				};
+				const resp = (await ctx.helpers.httpRequest(options)) as any;
+				const body = resp && typeof resp === 'object' && 'body' in resp ? resp.body : resp;
+				const buf = Buffer.isBuffer(body) ? body : Buffer.from(body);
+				const ext = extFromContentType(resp?.headers?.['content-type']) ?? extFromUrl(url);
+				return { base64: buf.toString('base64'), ext };
+			};
+
+			// Resolve one mapped image field into { base64, ext } or null, collecting warnings.
+			const resolveImage = async (
+				fieldName: string,
+				row: Record<string, any>,
+				label: string,
+				warnings: string[],
+			): Promise<{ base64: string; ext: string | null } | null> => {
+				if (!fieldName) return null;
+				const raw = readMapped(row, fieldName);
+				if (!hasValue(raw)) return null;
+				const url = resolveAttachmentUrl(raw, attachmentBaseUrl);
+				if (!url) {
+					warnings.push(`Could not resolve a URL for the ${label} image field "${fieldName}"`);
+					return null;
+				}
+				if (!looksAbsoluteUrl(url)) {
+					warnings.push(
+						`The ${label} image URL is relative ("${url}"). Set "Attachment Base URL" or map a field with an absolute/signed URL.`,
+					);
+					return null;
+				}
+				try {
+					return await fetchImage(url);
+				} catch (e) {
+					const msg = e instanceof Error ? e.message : String(e);
+					warnings.push(`Failed to fetch the ${label} image: ${msg}`);
+					return null;
+				}
+			};
 
 			const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);
 			const outputRows: Array<Record<string, any>> = [];
@@ -101,6 +232,23 @@ export const userAchievementsResource: ResourceHandler = {
 					continue;
 				}
 
+				const imageWarnings: string[] = [];
+				const frontImg = await resolveImage(frontFieldName, row, 'front', imageWarnings);
+				const backImg = await resolveImage(backFieldName, row, 'back', imageWarnings);
+
+				const achievement: Record<string, any> = {
+					completed_on: completedOn,
+					percent_complete: 100,
+				};
+
+				if (frontImg || backImg) {
+					const imagesType =
+						imagesTypeOverride || frontImg?.ext || backImg?.ext || 'jpg';
+					achievement.award_card_images_type = imagesType;
+					if (frontImg) achievement.award_card_front_image_content = frontImg.base64;
+					if (backImg) achievement.award_card_back_image_content = backImg.base64;
+				}
+
 				try {
 					const response = await troopTrackRequest(
 						ctx,
@@ -109,16 +257,19 @@ export const userAchievementsResource: ResourceHandler = {
 						{},
 						{
 							award_type_id: awardTypeId,
-							achievement: {
-								completed_on: completedOn,
-								percent_complete: 100,
-							},
+							achievement,
 						},
 					);
 
 					outputRows.push({
 						...row,
 						achievement_completed: true,
+						blue_card_images: {
+							front: !!frontImg,
+							back: !!backImg,
+							type: achievement.award_card_images_type ?? null,
+							warnings: imageWarnings.length ? imageWarnings : undefined,
+						},
 						response,
 					});
 				} catch (e) {
@@ -126,6 +277,11 @@ export const userAchievementsResource: ResourceHandler = {
 					outputRows.push({
 						...row,
 						achievement_completed: false,
+						blue_card_images: {
+							front: !!frontImg,
+							back: !!backImg,
+							warnings: imageWarnings.length ? imageWarnings : undefined,
+						},
 						errors: [msg],
 					});
 				}

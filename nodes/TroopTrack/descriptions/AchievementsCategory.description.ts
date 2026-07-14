@@ -220,6 +220,68 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		description: 'Name of the input field containing the completion date to send to TroopTrack. You can drag a field from the input sidebar. Only the field name will be used.',
 	},
 	{
+		displayName: 'Blue Card Front Image Field',
+		name: 'blue_card_front_field',
+		type: 'string',
+		default: '',
+		placeholder: 'blue_card_front',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Optional. Name of the input field holding the front blue card image (a URL, or a NoCoDB attachment value). The node fetches the image and base64-encodes it (award cards are only stored for BSA Merit Badges). Leave blank to send no front image.',
+	},
+	{
+		displayName: 'Blue Card Back Image Field',
+		name: 'blue_card_back_field',
+		type: 'string',
+		default: '',
+		placeholder: 'blue_card_back',
+		typeOptions: {
+			requiresDataPath: true,
+		},
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Optional. Name of the input field holding the back blue card image (a URL, or a NoCoDB attachment value). Leave blank to send no back image.',
+	},
+	{
+		displayName: 'Award Card Image Type Override',
+		name: 'award_card_images_type',
+		type: 'string',
+		default: '',
+		placeholder: 'jpg',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Optional. File extension for the award card images (front and back must be the same type). Leave blank to auto-detect from the fetched image content type.',
+	},
+	{
+		displayName: 'Attachment Base URL',
+		name: 'attachment_base_url',
+		type: 'string',
+		default: '',
+		placeholder: 'https://nocodb.example.com',
+		displayOptions: {
+			show: {
+				resource: ['achievementsCategory'],
+				operation: ['userAchievementMarkCompleted'],
+			},
+		},
+		description: 'Optional. Prepended to relative attachment URLs (e.g. a self-hosted NoCoDB "/download/..." path). Leave blank when the image field already contains absolute/signed URLs.',
+	},
+	{
 		displayName: 'Achievement ID',
 		name: 'achievementId',
 		type: 'number',

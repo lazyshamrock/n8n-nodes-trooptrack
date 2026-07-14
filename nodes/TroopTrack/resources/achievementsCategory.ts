@@ -5,7 +5,7 @@ import { userAchievementsResource } from './userAchievements.js';
 
 export const achievementsCategoryResource: ResourceHandler = {
 	resource: 'achievementsCategory',
-	runOnceOperations: new Set(['achievementsStartOther']),
+	runOnceOperations: new Set(['achievementsStartOther', 'userAchievementMarkCompleted']),
 	async execute(ctx, items, itemIndex, operation) {
 		if (operation === 'achievementsStartOther') {
 			return await achievementsResource.execute(ctx, items, itemIndex, 'startOtherAchievement');
