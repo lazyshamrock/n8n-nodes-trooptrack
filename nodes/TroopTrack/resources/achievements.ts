@@ -96,7 +96,10 @@ const findUserAchievementId = (
 ): number | null => {
 	const awardTypeId = normalizeId(awardTypeIdRaw);
 	const achievementId = normalizeId(achievementIdRaw);
-	if (awardTypeId == null || achievementId == null) {
+	// achievement_id is required; award_type_id is an optional tiebreaker. A TroopTrack
+	// achievement_id belongs to exactly one award type, so matching on it alone is unambiguous.
+	// Merit-badge resolution passes award_type_id = null; startOther still passes a value.
+	if (achievementId == null) {
 		return null;
 	}
 
@@ -110,17 +113,19 @@ const findUserAchievementId = (
 	for (const pool of pools) {
 		const records = collectNestedRecords(pool);
 		const match = records.find((record) => {
-			const recordAwardTypeId = normalizeId(
-				record?.award_type_id ??
-					record?.award_type?.award_type_id ??
-					record?.award_type?.id,
-			);
 			const recordAchievementId = normalizeId(
 				record?.achievement_id ??
 					record?.achievement?.achievement_id ??
 					record?.achievement?.id,
 			);
-			return recordAwardTypeId === awardTypeId && recordAchievementId === achievementId;
+			if (recordAchievementId !== achievementId) return false;
+			if (awardTypeId == null) return true;
+			const recordAwardTypeId = normalizeId(
+				record?.award_type_id ??
+					record?.award_type?.award_type_id ??
+					record?.award_type?.id,
+			);
+			return recordAwardTypeId === awardTypeId;
 		});
 
 		const userAchievementId = normalizeId(
@@ -1356,14 +1361,53 @@ export const achievementsResource: ResourceHandler = {
 					}
 				}
 
-				return inputRows.map((row, idx) => {
+				// After a successful start, resolve the newly-created user_achievement_id live from
+				// TroopTrack (GET /v1/users/{id} + findUserAchievementId) — the same pattern
+				// startOtherAchievement uses. Resolution issues go in a SEPARATE field, never `errors`,
+				// so a started badge whose id can't be resolved is still treated as a success by callers
+				// (the id is left null and flagged for review) rather than routed as a start failure.
+				const outputRows: Array<Record<string, any>> = [];
+				for (let idx = 0; idx < inputRows.length; idx++) {
+					const row = inputRows[idx] ?? {};
 					const entry = resultByIndex.get(idx);
-					return {
+					const mb_added = entry ? entry.mb_added : false;
+					const errors = entry ? entry.errors : ['No result returned for item'];
+
+					let userAchievementId: number | null = null;
+					let resolveError: string | null = null;
+					if (mb_added) {
+						try {
+							const normalizedUserId = normalizeId(readMapped(row, userIdFieldName));
+							const achievementId = toScalarFieldValue(readMapped(row, achievementIdFieldName));
+							if (normalizedUserId == null) {
+								resolveError = `Invalid ${userIdFieldName} for user_achievement_id resolution`;
+							} else {
+								const userResp = await troopTrackRequest(ctx, 'GET', `/v1/users/${normalizedUserId}`);
+								const userPayload = userResp?.user ?? userResp;
+								// award_type_id = null → match on achievement_id (tt_achievement_id) alone.
+								userAchievementId = findUserAchievementId(userPayload, null, achievementId);
+								if (userAchievementId == null) {
+									resolveError = `No matching user_achievement_id for user_id ${normalizedUserId}, achievement_id ${achievementId}`;
+								}
+							}
+						} catch (e) {
+							resolveError = e instanceof Error ? e.message : String(e);
+						}
+					}
+
+					const output: Record<string, any> = {
 						...row,
-						mb_added: entry ? entry.mb_added : false,
-						errors: entry ? entry.errors : ['No result returned for item'],
+						mb_added,
+						user_achievement_id: userAchievementId,
+						errors,
 					};
-				});
+					if (resolveError) {
+						output.user_achievement_resolve_error = resolveError;
+					}
+					outputRows.push(output);
+				}
+
+				return outputRows;
 			} catch (e) {
 				const msg = e instanceof Error ? e.message : String(e);
 				return inputRows.map((row) => ({
