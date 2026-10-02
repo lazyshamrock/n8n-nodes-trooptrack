@@ -122,10 +122,9 @@ export const achievementsCategoryFields: INodeProperties[] = [
 		displayName: 'Browserless WebSocket Endpoint',
 		name: 'browserlessWsEndpoint',
 		type: 'string',
-		required: true,
 		default: '',
 		placeholder: 'ws://browserless:3000?token=YOUR_TOKEN',
-		description: 'Full Browserless WebSocket endpoint including token query parameter',
+		description: 'Full Browserless WebSocket endpoint including token query parameter. Leave empty to use the PUPPETEER_BROWSER_WS_ENDPOINT environment variable on the n8n container.',
 		displayOptions: {
 			show: {
 				resource: ['achievementsCategory'],

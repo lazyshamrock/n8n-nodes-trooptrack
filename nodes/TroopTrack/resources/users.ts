@@ -1,6 +1,6 @@
 import type { ResourceHandler } from './types.js';
 import { troopTrackRequest } from '../GenericFunctions.js';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { TroopTrackPuppeteerSession, resolveBrowserlessWsEndpoint } from '../puppeteer/PuppeteerSession.js';
 import { scrapeTroopTrackUsernames } from '../puppeteer/scrapers/usernames.js';
 import { scrapeTroopTrackHealthFormDates } from '../puppeteer/scrapers/healthForms.js';
 import { scrapeTroopTrackTxtOptOut } from '../puppeteer/scrapers/txtOptOut.js';
@@ -266,12 +266,12 @@ export const usersResource: ResourceHandler = {
 			};
 
 			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0) as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0) as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Default null field on every item (requirement: always exists)
@@ -379,7 +379,7 @@ export const usersResource: ResourceHandler = {
 			if (returnType === 'extended') {
 				const dataToInclude = ctx.getNodeParameter('dataToInclude', itemIndex, []) as string[];
 				const debugMode = ctx.getNodeParameter('debugMode', itemIndex, false) as boolean;
-				const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', itemIndex, '') as string;
+				const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', itemIndex, '') as string);
 				const normalizeForDatabaseLoad = ctx.getNodeParameter(
 					'normalizeForDatabaseLoad',
 					itemIndex,
@@ -426,7 +426,7 @@ export const usersResource: ResourceHandler = {
 				// Only require browserless when scrape-based fields are requested
 				if (needsScrape && (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '')) {
 					throw new Error(
-						'Browserless WebSocket Endpoint is required when one or more selected Data to Include options require web scraping.',
+						'Browserless WebSocket Endpoint is required when one or more selected Data to Include options require web scraping. Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.',
 					);
 				}
 
@@ -1098,12 +1098,12 @@ export const usersResource: ResourceHandler = {
 			};
 
 			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0) as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0) as string);
 
 			const inputItems = items;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Mirror the input items as plain JSON records, with a nullable field
@@ -1188,12 +1188,12 @@ export const usersResource: ResourceHandler = {
 			};
 
 			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0) as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0) as string);
 
 			const inputItems = items;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Mirror the input items as plain JSON records, with nullable fields
@@ -1284,12 +1284,12 @@ export const usersResource: ResourceHandler = {
 			};
 
 			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0) as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0) as string);
 
 			const inputItems = items;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Always include txtOptOut. Default is null (unknown), per your "always exists" rule.
@@ -1375,12 +1375,12 @@ export const usersResource: ResourceHandler = {
 			};
 
 			const userIdField = ctx.getNodeParameter('userIdField', 0, 'user_id') as string;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0) as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0) as string);
 
 			const inputItems = items;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Always include counseled_MBs, even if empty

@@ -1,6 +1,6 @@
 import type { ResourceHandler } from './types.js';
 import { troopTrackRequest } from '../GenericFunctions.js';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { TroopTrackPuppeteerSession, resolveBrowserlessWsEndpoint } from '../puppeteer/PuppeteerSession.js';
 import { scrapePermissions } from '../puppeteer/scrapers/permissions.js';
 import { setTroopTrackUserPermissions } from '../puppeteer/scrapers/permissionsSet.js';
 
@@ -57,13 +57,13 @@ export const permissionsResource: ResourceHandler = {
 				},
 			};
 
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 			const demoAdultUserId = ctx.getNodeParameter('demoAdultUserId', 0) as number;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 			if (!demoAdultUserId) {
 				throw new Error('demoAdultUserId is required');
@@ -122,7 +122,7 @@ export const permissionsResource: ResourceHandler = {
 			const accessLevelFieldName = ctx.getNodeParameter('access_level', 0) as string;
 			const grantedPermissionsFieldName = ctx.getNodeParameter('granted_permissions', 0) as string;
 
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 
 			// Support either delayMs/batchSize or delay/batch depending on how your description file is named.
 			const getParamSafe = <T>(name: string, fallback: T): T => {
@@ -137,7 +137,7 @@ export const permissionsResource: ResourceHandler = {
 			const batchSize = getParamSafe<number>('batchSize', getParamSafe<number>('batch', 0));
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// 1) Validate granted_permissions is an array of numbers on every item

@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 import { PDFDocument, rgb, StandardFonts, type PDFFont } from 'pdf-lib';
 import { troopTrackRequest } from '../GenericFunctions.js';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { TroopTrackPuppeteerSession, resolveBrowserlessWsEndpoint } from '../puppeteer/PuppeteerSession.js';
 import { startTroopTrackMeritBadges } from '../puppeteer/scrapers/achievements.startMeritBadge.js';
 import { startTroopTrackOtherAchievements } from '../puppeteer/scrapers/achievements.startOther.js';
 
@@ -654,7 +654,7 @@ export const achievementsResource: ResourceHandler = {
 	async execute(ctx, _items, itemIndex, operation) {
 		if (operation === 'printMeritBadgeBlueCards') {
 			const items = _items;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 			const debugMode = ctx.getNodeParameter('debugMode', 0, false) as boolean;
@@ -666,7 +666,7 @@ export const achievementsResource: ResourceHandler = {
 			const signatureBinaryField = ctx.getNodeParameter('signatureBinaryField', 0, '') as string;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 			if (!userIdField || !achievementIdField) {
 				throw new Error('User ID Field and Achievement ID Field are required.');
@@ -1191,13 +1191,13 @@ export const achievementsResource: ResourceHandler = {
 			}
 			}
 		if (operation === 'getSelectableMeritBadges') {
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const debugMode = ctx.getNodeParameter('debugMode', 0, false) as boolean;
 			const demoScoutId = ctx.getNodeParameter('demoScoutId', 0) as number;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 			if (!Number.isFinite(demoScoutId) || demoScoutId <= 0) {
 				throw new Error('Demo Scout ID must be a positive number.');
@@ -1305,7 +1305,7 @@ export const achievementsResource: ResourceHandler = {
 
 		if (operation === 'startMeritBadge') {
 			const items = _items;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 
@@ -1313,7 +1313,7 @@ export const achievementsResource: ResourceHandler = {
 			const achievementIdFieldName = ctx.getNodeParameter('achievement_id', 0) as string;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);
@@ -1420,7 +1420,7 @@ export const achievementsResource: ResourceHandler = {
 
 		if (operation === 'startOtherAchievement') {
 			const items = _items;
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 
@@ -1429,7 +1429,7 @@ export const achievementsResource: ResourceHandler = {
 			const achievementIdFieldName = ctx.getNodeParameter('achievement_id', 0) as string;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			const inputRows = items.map((it) => (it.json ?? {}) as Record<string, any>);

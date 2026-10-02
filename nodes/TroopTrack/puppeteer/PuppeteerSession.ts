@@ -11,6 +11,18 @@ export type TroopTrackWebAuth = {
 };
 
 /**
+ * Resolves the Browserless WebSocket endpoint for a node execution.
+ * An explicit node parameter wins. When it is empty, the endpoint comes from the n8n container's
+ * PUPPETEER_BROWSER_WS_ENDPOINT (then PUPPETEER_WS_ENDPOINT), the same variables the
+ * n8n-nodes-puppeteer node reads, so one environment value serves both nodes.
+ */
+export function resolveBrowserlessWsEndpoint(param: string | undefined): string {
+  const fromParam = (param ?? '').trim();
+  if (fromParam) return fromParam;
+  return (process.env.PUPPETEER_BROWSER_WS_ENDPOINT || process.env.PUPPETEER_WS_ENDPOINT || '').trim();
+}
+
+/**
  * Manages a single Puppeteer session for one node execution.
  * Supports connecting to a remote Browserless instance via WebSocket endpoint.
  */

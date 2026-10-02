@@ -1,5 +1,5 @@
 import type { ResourceHandler } from './types.js';
-import { TroopTrackPuppeteerSession } from '../puppeteer/PuppeteerSession.js';
+import { TroopTrackPuppeteerSession, resolveBrowserlessWsEndpoint } from '../puppeteer/PuppeteerSession.js';
 import { scrapePositions } from '../puppeteer/scrapers/positions.js';
 import { createPositionAssignments } from '../puppeteer/scrapers/positions.createAssignments.js';
 
@@ -10,14 +10,14 @@ export const positionsResource: ResourceHandler = {
 		if (operation === 'getMany') {
 			const debugMode = ctx.getNodeParameter('debugMode', 0, false) as boolean;
 
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number; // currently unused
 			const demoScoutUserId = ctx.getNodeParameter('demoScoutUserId', 0) as number;
 			const demoAdultUserId = ctx.getNodeParameter('demoAdultUserId', 0) as number;
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 			if (!demoScoutUserId || !demoAdultUserId) {
 				throw new Error('demoScoutUserId and demoAdultUserId are required');
@@ -62,7 +62,7 @@ export const positionsResource: ResourceHandler = {
 		if (operation === 'createAssignments') {
 			const debugMode = ctx.getNodeParameter('debugMode', 0, false) as boolean;
 
-			const browserlessWsEndpoint = ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string;
+			const browserlessWsEndpoint = resolveBrowserlessWsEndpoint(ctx.getNodeParameter('browserlessWsEndpoint', 0, '') as string);
 			const delayMs = ctx.getNodeParameter('delayMs', 0, 300) as number;
 			const batchSize = ctx.getNodeParameter('batchSize', 0, 0) as number;
 
@@ -88,7 +88,7 @@ export const positionsResource: ResourceHandler = {
 			);
 
 			if (!browserlessWsEndpoint || browserlessWsEndpoint.trim() === '') {
-				throw new Error('Browserless WebSocket endpoint is required (including token).');
+				throw new Error('Browserless WebSocket endpoint is required (including token). Set the node parameter or the PUPPETEER_BROWSER_WS_ENDPOINT environment variable.');
 			}
 
 			// Build inputs for the scraper from all incoming items

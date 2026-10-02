@@ -70,6 +70,22 @@ You will need your TroopTrack API credentials.
 
 Once configured, the **TroopTrack** node will appear in the node list.
 
+### Browser endpoint for scraping operations
+
+Operations that TroopTrack's API does not cover (permissions, positions, merit badge start and print,
+some user data) drive a headless browser through a remote Browserless instance. Set the endpoint once,
+on the n8n container, rather than in every workflow:
+
+```
+PUPPETEER_BROWSER_WS_ENDPOINT=ws://<browserless-host>:3000?token=<token>
+```
+
+- Leave the node's **Browserless WebSocket Endpoint** field empty and the node uses this variable
+  (then `PUPPETEER_WS_ENDPOINT` if that is the one set).
+- It is the same variable the `n8n-nodes-puppeteer` node reads, so one value serves both nodes.
+- A value typed into the node's field still overrides the variable for that node.
+- Changing the token means changing it in one place (the container environment) and restarting n8n.
+
 
 ## Example Use Cases
 
